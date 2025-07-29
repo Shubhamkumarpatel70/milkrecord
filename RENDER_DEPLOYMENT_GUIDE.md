@@ -92,8 +92,9 @@ services:
     startCommand: npm start
 
   # Frontend Web Service
-  - type: static
+  - type: web
     name: milkrecord-frontend
+    env: static
     rootDir: client # ✅ Correct
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
