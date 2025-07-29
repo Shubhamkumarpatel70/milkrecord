@@ -3,7 +3,7 @@ services:
   - type: web
     name: milkrecord
     env: node
-    plan: free
+    plan: starter
     rootDir: server
     buildCommand: npm install
     startCommand: npm start
@@ -22,7 +22,7 @@ services:
   - type: web
     name: milkrecord-frontend
     env: static
-    plan: free
+    plan: starter
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: ./build

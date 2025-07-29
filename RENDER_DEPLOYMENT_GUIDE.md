@@ -85,9 +85,9 @@ If blueprint doesn't work, create services manually:
 services:
   # Backend API Service
   - type: web
-    name: milkrecord-backend
+    name: milkrecord
     env: node
-    plan: free
+    plan: starter
     rootDir: server # ✅ Correct
     buildCommand: npm install
     startCommand: npm start
@@ -96,7 +96,7 @@ services:
   - type: web
     name: milkrecord-frontend
     env: static
-    plan: free
+    plan: starter
     rootDir: client # ✅ Correct
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
