@@ -25,16 +25,23 @@ app.use('/api/customers', require('./routes/customer'));
 app.use('/api/admin', require('./routes/admin'));
 
 // MongoDB Connection
-mongoose.connect(process.env.MONGO_URI, {
+const mongoUri = process.env.MONGODB_URI;
+if (!mongoUri) {
+  console.error('MONGODB_URI environment variable is not set!');
+  process.exit(1);
+}
+
+mongoose.connect(mongoUri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
 .then(() => {
-  console.log('MongoDB connected');
+  console.log('MongoDB connected successfully');
   app.listen(process.env.PORT || 5000, () => {
     console.log(`Server running on port ${process.env.PORT || 5000}`);
   });
 })
 .catch((err) => {
   console.error('MongoDB connection error:', err);
+  process.exit(1);
 }); 
