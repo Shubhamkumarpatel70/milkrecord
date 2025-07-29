@@ -1,0 +1,24 @@
+<svg width="32" height="32" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="240" fill="#4F46E5"/>
+  
+  <!-- Milk bottle -->
+  <path d="M200 120h112c8.8 0 16 7.2 16 16v200c0 8.8-7.2 16-16 16H200c-8.8 0-16-7.2-16-16V136c0-8.8 7.2-16 16-16z" fill="white"/>
+  <path d="M200 120h112v-20c0-8.8-7.2-16-16-16H216c-8.8 0-16 7.2-16 16v20z" fill="#E5E7EB"/>
+  
+  <!-- Milk level -->
+  <rect x="208" y="280" width="96" height="40" fill="#FEF3C7" rx="4"/>
+  
+  <!-- Chart bars -->
+  <rect x="220" y="340" width="16" height="60" fill="#10B981" rx="2"/>
+  <rect x="244" y="320" width="16" height="80" fill="#10B981" rx="2"/>
+  <rect x="268" y="300" width="16" height="100" fill="#10B981" rx="2"/>
+  <rect x="292" y="280" width="16" height="120" fill="#10B981" rx="2"/>
+  
+  <!-- Drop icon -->
+  <path d="M256 180c-8.8 0-16 7.2-16 16 0 8.8 16 40 16 40s16-31.2 16-40c0-8.8-7.2-16-16-16z" fill="#3B82F6"/>
+  
+  <!-- App name - only show on larger icons -->
+  
+  
+</svg>

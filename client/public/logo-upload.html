@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logo Upload Utility</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .upload-area {
+            border: 2px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            transition: border-color 0.3s;
+        }
+        .upload-area:hover {
+            border-color: #4F46E5;
+        }
+        .upload-area.dragover {
+            border-color: #4F46E5;
+            background: #f0f4ff;
+        }
+        .preview {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .preview-item {
+            text-align: center;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .preview-item img {
+            max-width: 100px;
+            max-height: 100px;
+            object-fit: contain;
+        }
+        .code-output {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        button {
+            background: #4F46E5;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #3730A3;
+        }
+        .file-input {
+            display: none;
+        }
+        .instructions {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Custom Logo Upload Utility</h1>
+        <p>Upload your logo and get the code to integrate it into your Milk Record app.</p>
+        
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ol>
+                <li>Upload your logo file (PNG, JPG, or SVG recommended)</li>
+                <li>Preview how it will look in different sizes</li>
+                <li>Copy the generated code</li>
+                <li>Replace the existing logo in your app</li>
+            </ol>
+        </div>
+
+        <div class="upload-area" id="uploadArea">
+            <input type="file" id="fileInput" class="file-input" accept="image/*">
+            <div>
+                <h3>📁 Drop your logo here or click to browse</h3>
+                <p>Supports PNG, JPG, SVG files (recommended: 200x200px or larger)</p>
+                <button onclick="document.getElementById('fileInput').click()">Choose File</button>
+            </div>
+        </div>
+
+        <div id="preview" class="preview" style="display: none;">
+            <div class="preview-item">
+                <h4>Small (32x32)</h4>
+                <img id="previewSmall" alt="Small preview">
+            </div>
+            <div class="preview-item">
+                <h4>Medium (64x64)</h4>
+                <img id="previewMedium" alt="Medium preview">
+            </div>
+            <div class="preview-item">
+                <h4>Large (128x128)</h4>
+                <img id="previewLarge" alt="Large preview">
+            </div>
+            <div class="preview-item">
+                <h4>Original</h4>
+                <img id="previewOriginal" alt="Original preview">
+            </div>
+        </div>
+
+        <div id="codeOutput" class="code-output" style="display: none;">
+            <h3>📋 Generated Code:</h3>
+            <div id="codeContent"></div>
+        </div>
+
+        <div id="instructions" style="display: none;">
+            <h3>🔧 Next Steps:</h3>
+            <ol>
+                <li>Save your logo file as <code>logo.png</code> in the <code>client/public/</code> folder</li>
+                <li>Copy the code above and replace the content in <code>client/src/components/CustomLogo.js</code></li>
+                <li>Update the import in <code>client/src/App.js</code> to use CustomLogo instead of Logo</li>
+                <li>Restart your app to see the changes</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const preview = document.getElementById('preview');
+        const codeOutput = document.getElementById('codeOutput');
+        const instructions = document.getElementById('instructions');
+
+        // Drag and drop functionality
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFile(e.target.files[0]);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file.type.startsWith('image/')) {
+                alert('Please select an image file (PNG, JPG, SVG)');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    displayPreview(img.src, file.name);
+                    generateCode(file.name);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function displayPreview(src, fileName) {
+            // Display previews
+            document.getElementById('previewSmall').src = src;
+            document.getElementById('previewMedium').src = src;
+            document.getElementById('previewLarge').src = src;
+            document.getElementById('previewOriginal').src = src;
+            
+            preview.style.display = 'flex';
+            codeOutput.style.display = 'block';
+            instructions.style.display = 'block';
+        }
+
+        function generateCode(fileName) {
+            const fileExtension = fileName.split('.').pop().toLowerCase();
+            const isSvg = fileExtension === 'svg';
+            
+            let code = '';
+            
+            if (isSvg) {
+                code = `// For SVG logo
+const customLogoConfig = {
+  customSvg: \`<img src="/${fileName}" alt="Logo" />\`,
+  
+  textOnly: {
+    text: 'MILK RECORD',
+    color: '#4F46E5'
+  }
+};
+
+// Uncomment the SVG section in CustomLogo.js
+if (customLogoConfig.customSvg) {
+  return (
+    <div className={\`flex items-center space-x-2 \${className}\`}>
+      <div 
+        className={\`\${sizeClasses[size]} text-blue-600\`}
+        dangerouslySetInnerHTML={{ __html: customLogoConfig.customSvg }}
+      />
+      {showText && (
+        <span className={\`font-bold text-blue-600 \${textSizeClasses[size]}\`}>
+          {customLogoConfig.textOnly.text}
+        </span>
+      )}
+    </div>
+  );
+}`;
+            } else {
+                code = `// For image logo (${fileExtension.toUpperCase()})
+const customLogoConfig = {
+  imageSrc: '/${fileName}',
+  
+  textOnly: {
+    text: 'MILK RECORD',
+    color: '#4F46E5'
+  }
+};
+
+// Uncomment the image section in CustomLogo.js
+if (customLogoConfig.imageSrc) {
+  return (
+    <div className={\`flex items-center space-x-2 \${className}\`}>
+      <img 
+        src={customLogoConfig.imageSrc} 
+        alt="Logo" 
+        className={\`\${sizeClasses[size]} object-contain\`}
+      />
+      {showText && (
+        <span className={\`font-bold text-blue-600 \${textSizeClasses[size]}\`}>
+          {customLogoConfig.textOnly.text}
+        </span>
+      )}
+    </div>
+  );
+}`;
+            }
+            
+            document.getElementById('codeContent').textContent = code;
+        }
+    </script>
+</body>
+</html> 
