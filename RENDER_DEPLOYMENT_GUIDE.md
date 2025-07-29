@@ -31,7 +31,7 @@ The frontend build is failing because Render is not using the updated `render.ya
 
    - Render will automatically detect the `render.yaml` file
    - Verify both services are listed:
-     - `milkrecord-backend` (Node.js)
+     - `milkrecord` (Node.js)
      - `milkrecord-frontend` (Static Site)
 
 3. **Set Environment Variables**
@@ -45,7 +45,7 @@ The frontend build is failing because Render is not using the updated `render.ya
      ```
    - **Frontend Variables:**
      ```
-     REACT_APP_API_URL=https://milkrecord-backend.onrender.com
+     REACT_APP_API_URL=https://milkrecord.onrender.com
      ```
 
 4. **Deploy**
@@ -61,7 +61,7 @@ If blueprint doesn't work, create services manually:
 1. Click "New +" → "Web Service"
 2. Connect GitHub repository
 3. Configure:
-   - **Name**: `milkrecord-backend`
+   - **Name**: `milkrecord`
    - **Environment**: Node
    - **Build Command**: `npm install`
    - **Start Command**: `npm start`

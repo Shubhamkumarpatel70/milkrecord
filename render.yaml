@@ -1,7 +1,7 @@
 services:
   # Backend API Service
   - type: web
-    name: milkrecord-backend
+    name: milkrecord
     env: node
     plan: free
     rootDir: server
@@ -28,7 +28,7 @@ services:
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://milkrecord-backend.onrender.com
+        value: https://milkrecord.onrender.com
     routes:
       - type: rewrite
         source: /*
