@@ -87,16 +87,13 @@ services:
   - type: web
     name: milkrecord
     env: node
-    plan: starter
     rootDir: server # ✅ Correct
     buildCommand: npm install
     startCommand: npm start
 
   # Frontend Web Service
-  - type: web
+  - type: static
     name: milkrecord-frontend
-    env: static
-    plan: starter
     rootDir: client # ✅ Correct
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
