@@ -1,7 +1,7 @@
 services:
   # Backend API Service
   - type: web
-    name: milkrecord
+    name: milkrecord-backend
     env: node
     rootDir: server
     buildCommand: npm install
@@ -18,14 +18,15 @@ services:
     healthCheckPath: /api/health
 
   # Frontend Static Site
-  - type: static
+  - type: web
     name: milkrecord-frontend
+    env: static
     rootDir: client
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: npm install && npm run build
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
-        value: https://milkrecord.onrender.com
+        value: https://milkrecord-backend.onrender.com
     routes:
       - type: rewrite
         source: /*
