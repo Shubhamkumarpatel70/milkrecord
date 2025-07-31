@@ -17,10 +17,9 @@ services:
         sync: false
     healthCheckPath: /api/health
 
-  # Frontend Web Service
-  - type: web
+  # Frontend Static Site
+  - type: static
     name: milkrecord-frontend
-    env: static
     rootDir: client
     buildCommand: npm install && npm run build
     staticPublishPath: ./build
