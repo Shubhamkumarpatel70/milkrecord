@@ -8,22 +8,13 @@ dotenv.config();
 const app = express();
 
 // CORS configuration
-const corsOptions = {
-  origin: [
-    'https://milkrecord-frontend.onrender.com',
-    'http://localhost:3000',
-    'http://localhost:5000'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-auth-token']
-};
-
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'],
+  credentials: true
+}));
 app.use(express.json());
 
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+
 
 // CORS debugging middleware
 app.use((req, res, next) => {
