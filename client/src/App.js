@@ -5,6 +5,7 @@ import InstallPrompt from './components/InstallPrompt';
 import Logo from './components/CustomLogo';
 import Settings from './components/Settings';
 import SettingsButton from './components/SettingsButton';
+import WelcomeSplash from './components/WelcomeSplash';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { translations } from './translations/translations';
 
@@ -1779,6 +1780,12 @@ function AppContent() {
   const { language } = useSettings();
   const t = translations[language];
   
+  // Welcome splash screen state
+  const [showSplash, setShowSplash] = useState(() => {
+    // Show splash only on first visit (not on refresh)
+    return !localStorage.getItem('hasVisitedBefore');
+  });
+  
   // Register service worker for PWA functionality
   React.useEffect(() => {
     if ('serviceWorker' in navigator) {
@@ -2158,8 +2165,19 @@ function AppContent() {
     });
   };
 
+  // Handle splash screen completion
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    localStorage.setItem('hasVisitedBefore', 'true');
+  };
+
   // Make handleShareCustomer available globally
   window.handleShareCustomer = handleShareCustomer;
+
+  // Show welcome splash screen
+  if (showSplash) {
+    return <WelcomeSplash onComplete={handleSplashComplete} />;
+  }
 
   // Show loading screen while checking authentication
   if (isInitializing) {

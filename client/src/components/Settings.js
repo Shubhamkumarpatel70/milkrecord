@@ -6,6 +6,11 @@ function Settings({ isOpen, onClose }) {
   const { theme, language, toggleTheme, toggleLanguage } = useSettings();
   const t = translations[language];
 
+  const resetSplashScreen = () => {
+    localStorage.removeItem('hasVisitedBefore');
+    window.location.reload();
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -90,6 +95,19 @@ function Settings({ isOpen, onClose }) {
                 <span>{t.hindi}</span>
               </button>
             </div>
+          </div>
+
+          {/* Reset Splash Screen */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
+              App Settings
+            </h3>
+            <button
+              onClick={resetSplashScreen}
+              className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Reset Welcome Screen
+            </button>
           </div>
         </div>
 
