@@ -2173,8 +2173,8 @@ function AppContent() {
     );
   }
 
-  // Show login required message if not authenticated
-  if (!isAuthenticated) {
+  // Show login required message if not authenticated and not already on login page
+  if (!isAuthenticated && view !== 'login' && view !== 'register') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-100 dark:from-gray-900 dark:to-gray-800">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center relative">
@@ -2188,9 +2188,10 @@ function AppContent() {
             <button 
               className="w-full bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
               onClick={() => {
-                // Clear any stored view and redirect to main login page with login parameter
+                // Clear any stored view and set the view to login
                 localStorage.removeItem('lastView');
-                window.location.href = window.location.origin + '?view=login';
+                setView('login');
+                setIsAuthenticated(false);
               }}
             >
               {t.goToLogin}
