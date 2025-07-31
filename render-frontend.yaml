@@ -2,7 +2,7 @@ services:
   - type: static
     name: milkrecord-frontend
     rootDir: client
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: npm run build:render
     staticPublishPath: ./build
     envVars:
       - key: REACT_APP_API_URL
@@ -10,4 +10,4 @@ services:
     routes:
       - type: rewrite
         source: /*
-        destination: /index.html 
+        destination: /index.html
