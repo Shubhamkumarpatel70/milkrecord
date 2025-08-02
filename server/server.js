@@ -7,9 +7,19 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration - Simplified
+// CORS configuration - Enhanced
 app.use(cors({
-  origin: ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'],
+  origin: function (origin, callback) {
+    const allowedOrigins = ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'];
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
