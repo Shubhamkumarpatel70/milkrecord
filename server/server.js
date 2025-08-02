@@ -61,11 +61,44 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/milk-records', require('./routes/milkRecord'));
-app.use('/api/customers', require('./routes/customer'));
-app.use('/api/admin', require('./routes/admin'));
+// Routes with error handling
+console.log('Loading routes...');
+
+// Load auth routes
+try {
+  const authRoutes = require('./routes/auth');
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Auth routes loaded');
+} catch (error) {
+  console.error('❌ Error loading auth routes:', error);
+}
+
+// Load milk record routes
+try {
+  const milkRecordRoutes = require('./routes/milkRecord');
+  app.use('/api/milk-records', milkRecordRoutes);
+  console.log('✅ Milk record routes loaded');
+} catch (error) {
+  console.error('❌ Error loading milk record routes:', error);
+}
+
+// Load customer routes
+try {
+  const customerRoutes = require('./routes/customer');
+  app.use('/api/customers', customerRoutes);
+  console.log('✅ Customer routes loaded');
+} catch (error) {
+  console.error('❌ Error loading customer routes:', error);
+}
+
+// Load admin routes
+try {
+  const adminRoutes = require('./routes/admin');
+  app.use('/api/admin', adminRoutes);
+  console.log('✅ Admin routes loaded');
+} catch (error) {
+  console.error('❌ Error loading admin routes:', error);
+}
 
 // MongoDB Connection
 const mongoUri = process.env.MONGODB_URI;
