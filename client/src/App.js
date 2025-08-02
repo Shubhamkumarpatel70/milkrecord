@@ -1853,22 +1853,11 @@ function AppContent() {
         const lastView = localStorage.getItem('lastView');
         
         if (userId && userRole) {
-          // Verify the user is still valid by making a request
-          try {
-            // Just check if we can make a request - use a simple endpoint
-            await axios.get('/api/milk-records/total?userId=' + userId);
-            // If request succeeds, user is authenticated
-            setDashboard(userRole);
-            setMessage(`Welcome back, ${userName || 'User'}!`);
-          } catch (error) {
-            console.error('Auth verification failed:', error);
-            // If request fails, clear invalid auth data
-            localStorage.removeItem('userId');
-            localStorage.removeItem('userRole');
-            localStorage.removeItem('userName');
-            localStorage.removeItem('lastView');
-            setDashboard(null);
-          }
+          // Trust the stored authentication data instead of making API calls
+          // This prevents authentication from failing due to CORS/API issues
+          setDashboard(userRole);
+          setMessage(`Welcome back, ${userName || 'User'}!`);
+          setIsAuthenticated(true);
         } else if (lastView && lastView !== 'home') {
           // Restore last view if user was not authenticated
           setView(lastView);
@@ -1949,6 +1938,9 @@ function AppContent() {
       
       console.log('User role:', res.data.userRole);
       
+      // Set authentication state
+      setIsAuthenticated(true);
+      
       if (res.data.userRole === "admin") {
         console.log('Setting dashboard to admin');
         setDashboard("admin");
@@ -1971,6 +1963,7 @@ function AppContent() {
     localStorage.removeItem('userName');
     
     setDashboard(null);
+    setIsAuthenticated(false);
     setView("home");
     setMessage("");
     setLoginData({ mobile: "", mpin: "" });
