@@ -9,8 +9,11 @@ import WelcomeSplash from './components/WelcomeSplash';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { translations } from './translations/translations';
 
-// Configure axios base URL
-axios.defaults.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// Configure axios base URL with fallback
+const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
+const productionURL = process.env.REACT_APP_API_URL || 'https://milkrecord-backend.onrender.com';
+
+axios.defaults.baseURL = isDevelopment ? 'http://localhost:5000' : productionURL;
 
 // Helper to build a calendar grid for the month
 function renderCalendar(days) {
