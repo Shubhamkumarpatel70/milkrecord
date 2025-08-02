@@ -7,36 +7,13 @@ dotenv.config();
 
 const app = express();
 
-// CORS configuration - Enhanced for preflight requests
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'];
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
+// CORS configuration - Simplified
+app.use(cors({
+  origin: ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  preflightContinue: false,
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-
-// Handle preflight requests explicitly
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin);
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.sendStatus(200);
-});
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
+}));
 
 app.use(express.json());
 
