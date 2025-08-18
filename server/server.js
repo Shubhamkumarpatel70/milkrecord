@@ -123,11 +123,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // MongoDB Connection
-const mongoUri = process.env.MONGODB_URI;
-if (!mongoUri) {
-  console.error('MONGODB_URI environment variable is not set!');
-  process.exit(1);
-}
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/milk-record';
+console.log('Connecting to MongoDB:', mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
 mongoose.connect(mongoUri)
 .then(() => {

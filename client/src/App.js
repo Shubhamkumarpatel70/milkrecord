@@ -6,6 +6,8 @@ import Logo from './components/CustomLogo';
 import Settings from './components/Settings';
 import SettingsButton from './components/SettingsButton';
 import WelcomeSplash from './components/WelcomeSplash';
+import CustomerVerification from './components/CustomerVerification';
+import CustomerRecords from './components/CustomerRecords';
 import { SettingsProvider, useSettings } from './contexts/SettingsContext';
 import { translations } from './translations/translations';
 
@@ -113,8 +115,9 @@ function CustomersPage({ authData }) {
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = React.useState(true);
   const [isProcessingPayment, setIsProcessingPayment] = React.useState(false);
+  const [isDemoMode, setIsDemoMode] = React.useState(false);
 
-  // Check authentication on mount
+  // Check authentication on mount - Modified to allow demo mode
   React.useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -143,12 +146,15 @@ function CustomersPage({ authData }) {
               setIsAuthenticated(false);
             }
           } else {
+            // No authentication - enable demo mode
             setIsAuthenticated(false);
+            setIsDemoMode(true);
           }
         }
       } catch (error) {
         console.error('Auth check failed:', error);
         setIsAuthenticated(false);
+        setIsDemoMode(true);
       } finally {
         setIsCheckingAuth(false);
       }
@@ -158,19 +164,73 @@ function CustomersPage({ authData }) {
   }, [authData]);
 
   React.useEffect(() => {
-    if (isAuthenticated && !isCheckingAuth) {
-      const userId = localStorage.getItem('userId');
-      axios.get(`/api/milk-records?userId=${userId}`).then(res => {
-        setSummaries(res.data);
+    if ((isAuthenticated && !isCheckingAuth) || isDemoMode) {
+      if (isAuthenticated) {
+        const userId = localStorage.getItem('userId');
+        axios.get(`/api/milk-records?userId=${userId}`).then(res => {
+          setSummaries(res.data);
+          setLoading(false);
+        }).catch(() => setLoading(false));
+      } else if (isDemoMode) {
+        // Demo mode - show sample data
+        setSummaries([
+          {
+            name: "Demo Customer 1",
+            whatsapp: "9876543210",
+            month: "2024-01",
+            totalDays: 15,
+            totalAmount: 1500,
+            paidAmount: 1000,
+            status: "unpaid",
+            userId: "demo"
+          },
+          {
+            name: "Demo Customer 2", 
+            whatsapp: "9876543211",
+            month: "2024-01",
+            totalDays: 20,
+            totalAmount: 2000,
+            paidAmount: 2000,
+            status: "paid",
+            userId: "demo"
+          }
+        ]);
         setLoading(false);
-      }).catch(() => setLoading(false));
+      }
     }
-  }, [isAuthenticated, isCheckingAuth]);
+  }, [isAuthenticated, isCheckingAuth, isDemoMode]);
 
   const handleView = async (userId, month, name) => {
     setViewDetails({ userId, month, name });
     setSelectedMonth(month);
-    fetchDetails(userId, month, name);
+    if (isAuthenticated) {
+      fetchDetails(userId, month, name);
+    } else {
+      // Demo mode - show sample calendar data
+      const demoData = {
+        totalDays: 15,
+        totalAmount: 1500,
+        days: Array.from({ length: 31 }, (_, i) => {
+          const day = i + 1;
+          if (day <= 15) {
+            return {
+              date: `2024-01-${day.toString().padStart(2, '0')}`,
+              record: {
+                quantityKg: Math.floor(Math.random() * 3) + 1,
+                amount: Math.floor(Math.random() * 100) + 50,
+                status: day <= 10 ? 'paid' : 'unpaid',
+                paidAmount: day <= 10 ? Math.floor(Math.random() * 100) + 50 : 0
+              }
+            };
+          }
+          return {
+            date: `2024-01-${day.toString().padStart(2, '0')}`,
+            record: null
+          };
+        })
+      };
+      setDetails(demoData);
+    }
   };
 
   const fetchDetails = async (userId, month, customerName = null) => {
@@ -200,7 +260,37 @@ function CustomersPage({ authData }) {
   const handleMonthChange = (e) => {
     const newMonth = e.target.value;
     setSelectedMonth(newMonth);
-    if (viewDetails) fetchDetails(viewDetails.userId, newMonth, viewDetails.name);
+    if (viewDetails) {
+      if (isAuthenticated) {
+        fetchDetails(viewDetails.userId, newMonth, viewDetails.name);
+      } else {
+        // Demo mode - regenerate sample data for new month
+        const demoData = {
+          totalDays: Math.floor(Math.random() * 20) + 10,
+          totalAmount: Math.floor(Math.random() * 2000) + 1000,
+          days: Array.from({ length: 31 }, (_, i) => {
+            const day = i + 1;
+            const totalDays = Math.floor(Math.random() * 20) + 10;
+            if (day <= totalDays) {
+              return {
+                date: `${newMonth}-${day.toString().padStart(2, '0')}`,
+                record: {
+                  quantityKg: Math.floor(Math.random() * 3) + 1,
+                  amount: Math.floor(Math.random() * 100) + 50,
+                  status: Math.random() > 0.5 ? 'paid' : 'unpaid',
+                  paidAmount: Math.random() > 0.5 ? Math.floor(Math.random() * 100) + 50 : 0
+                }
+              };
+            }
+            return {
+              date: `${newMonth}-${day.toString().padStart(2, '0')}`,
+              record: null
+            };
+          })
+        };
+        setDetails(demoData);
+      }
+    }
   };
 
   // Helper to format month as 'Month YYYY'
@@ -394,18 +484,54 @@ function CustomersPage({ authData }) {
             <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mr-3">
               <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0V7m8 0a4 4 0 00-8 0" /></svg>
             </span>
-            <h2 className="text-3xl font-extrabold text-blue-700">My Customers</h2>
+            <div>
+              <h2 className="text-3xl font-bold text-blue-700">My Customers</h2>
+              {isDemoMode && (
+                <p className="text-sm text-orange-600 font-medium mt-1">
+                  🎭 Demo Mode - Showing sample data
+                </p>
+              )}
+            </div>
           </div>
-          <button
-            onClick={() => window.saveCurrentView('home')}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition flex items-center"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Dashboard
-          </button>
+          <div className="flex items-center gap-3">
+            {isDemoMode && (
+              <button
+                onClick={() => window.saveCurrentView('login')}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
+              >
+                Login to View Real Data
+              </button>
+            )}
+            <button
+              onClick={() => window.saveCurrentView('home')}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Dashboard
+            </button>
+          </div>
         </div>
+        {isDemoMode && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 border border-orange-300 rounded-xl">
+            <div className="flex items-center justify-center gap-3">
+              <div className="text-orange-600 text-2xl">🎭</div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold text-orange-800">Demo Mode Active</h3>
+                <p className="text-orange-700 text-sm">
+                  You're viewing sample customer data. Login to access your real customer records and manage payments.
+                </p>
+              </div>
+              <button
+                onClick={() => window.saveCurrentView('login')}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold transition text-sm"
+              >
+                Login Now
+              </button>
+            </div>
+          </div>
+        )}
         {loading ? (
           <div className="text-center py-4">Loading...</div>
         ) : summaries.length === 0 ? (
@@ -440,22 +566,34 @@ function CustomersPage({ authData }) {
                       >
                         View
                       </button>
-                      <button
-                        onClick={() => {
-                          setPaymentModal({ open: true, record: s });
-                          setPaymentType('total');
-                          setCustomAmount('');
-                        }}
-                        className={`ml-2 px-3 py-1 rounded font-semibold shadow transition text-sm ${s.status === 'paid' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
-                      >
-                        {s.status === 'paid' ? 'Paid' : 'Unpaid'}
-                      </button>
-                      <button
-                        onClick={() => handleShareCustomer(s.userId)}
-                        className="ml-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm"
-                      >
-                        Share
-                      </button>
+                      {isAuthenticated ? (
+                        <button
+                          onClick={() => {
+                            setPaymentModal({ open: true, record: s });
+                            setPaymentType('total');
+                            setCustomAmount('');
+                          }}
+                          className={`ml-2 px-3 py-1 rounded font-semibold shadow transition text-sm ${s.status === 'paid' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}
+                        >
+                          {s.status === 'paid' ? 'Paid' : 'Unpaid'}
+                        </button>
+                      ) : (
+                        <span className="ml-2 px-3 py-1 rounded font-semibold text-sm bg-gray-400 text-white cursor-not-allowed">
+                          {s.status === 'paid' ? 'Paid' : 'Unpaid'}
+                        </span>
+                      )}
+                      {isAuthenticated ? (
+                        <button
+                          onClick={() => handleShareCustomer(s.userId)}
+                          className="ml-2 px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 transition text-sm"
+                        >
+                          Share
+                        </button>
+                      ) : (
+                        <span className="ml-2 px-3 py-1 rounded font-semibold text-sm bg-gray-400 text-white cursor-not-allowed">
+                          Share
+                        </span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -470,6 +608,13 @@ function CustomersPage({ authData }) {
           <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-lg relative">
             <button className="absolute top-3 right-3 text-gray-500 hover:text-red-600 text-2xl font-bold" onClick={closeModal}>&times;</button>
             <h3 className="text-xl font-bold text-blue-700 mb-4 text-center">{viewDetails.name} - {selectedMonth}</h3>
+            {isDemoMode && (
+              <div className="mb-4 p-3 bg-orange-100 border border-orange-300 rounded-lg">
+                <p className="text-orange-800 text-sm text-center">
+                  🎭 Demo Mode - This is sample data. Login to view your real customer records.
+                </p>
+              </div>
+            )}
             <div className="flex justify-center mb-4 gap-2">
               <input
                 type="month"
@@ -1368,121 +1513,179 @@ function UserDashboard({ onLogout, onNavigate, onOpenSettings }) {
     fetchPaymentOption();
   }, []);
 
+  // Professional UI helpers
+  const formatCurrencyInr = (amount) => {
+    const numericAmount = Number(amount || 0);
+    try {
+      return new Intl.NumberFormat('en-IN', {
+        style: 'currency',
+        currency: 'INR',
+        maximumFractionDigits: 0
+      }).format(Math.max(0, numericAmount));
+    } catch (_) {
+      return `₹ ${Math.max(0, Math.round(numericAmount))}`;
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] relative">
       {/* Settings Button for User Dashboard */}
       <div className="absolute top-4 right-4 z-10">
         <SettingsButton onClick={onOpenSettings} />
       </div>
-      {/* Dashboard Cards */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-xl border border-gray-100 dark:border-gray-700 flex flex-col items-center mb-8">
-        <h2 className="text-4xl font-extrabold text-green-600 dark:text-green-400 mb-2 text-center">User Dashboard</h2>
-        <p className="text-lg text-gray-700 mb-6 text-center">
-          Welcome, <span className="font-semibold text-blue-700">{userName}</span>! Here you can manage your milk records.
-        </p>
-        <div className="grid grid-cols-2 gap-6 mb-8 w-full">
-          <div className="bg-blue-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-blue-600">{todaysMilkKg}</span>
-            <span className="text-gray-600">Today's Milk (Kg)</span>
+      {/* Header */}
+      <div className="w-full max-w-5xl">
+        <div className="rounded-2xl overflow-hidden shadow-2xl mb-8">
+          <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 sm:p-10">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-blue-100 text-sm uppercase tracking-widest mb-2">Dashboard</p>
+                <h2 className="text-3xl sm:text-4xl font-extrabold text-white">Welcome, {userName}</h2>
+                <p className="text-blue-100 mt-1">Manage milk records, payments and customers</p>
+              </div>
+              <div className="hidden sm:flex items-center gap-6">
+                <div className="bg-white/10 rounded-xl px-4 py-3 text-white text-sm">
+                  <div className="opacity-80">Today</div>
+                  <div className="text-lg font-semibold">{todaysMilkKg} Kg</div>
+                </div>
+                <div className="bg-white/10 rounded-xl px-4 py-3 text-white text-sm">
+                  <div className="opacity-80">Pending</div>
+                  <div className="text-lg font-semibold">{formatCurrencyInr(totalPending)}</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="bg-purple-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-purple-600">{totalMilkQuantityKg}</span>
-            <span className="text-gray-600">Total Milk (Kg)</span>
+          {/* Stats Grid */}
+          <div className="bg-white dark:bg-gray-800 p-6 sm:p-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-blue-50/60">
+                <div className="text-sm text-gray-600">Today's Milk</div>
+                <div className="mt-1 text-2xl font-bold text-blue-700">{todaysMilkKg} Kg</div>
+              </div>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-purple-50/60">
+                <div className="text-sm text-gray-600">Total Milk</div>
+                <div className="mt-1 text-2xl font-bold text-purple-700">{totalMilkQuantityKg} Kg</div>
+              </div>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-green-50/60">
+                <div className="text-sm text-gray-600">Total Revenue</div>
+                <div className="mt-1 text-2xl font-bold text-green-700">{formatCurrencyInr(totalRevenue)}</div>
+              </div>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-amber-50/60">
+                <div className="text-sm text-gray-600">Total Received</div>
+                <div className="mt-1 text-2xl font-bold text-amber-700">{formatCurrencyInr(totalReceive)}</div>
+              </div>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-rose-50/60">
+                <div className="text-sm text-gray-600">Total Pending</div>
+                <div className="mt-1 text-2xl font-bold text-rose-700">{formatCurrencyInr(totalPending)}</div>
+              </div>
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-indigo-50/60">
+                <div className="text-sm text-gray-600">Total Customers</div>
+                <div className="mt-1 text-2xl font-bold text-indigo-700">{totalCustomers}</div>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4 sm:gap-6 mt-4 sm:mt-6">
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700 p-5 bg-yellow-50/60">
+                <div className="text-sm text-gray-600">Total Records</div>
+                <div className="mt-1 text-2xl font-bold text-yellow-700">{totalRecords}</div>
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end">
+              <button className="px-5 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold shadow-sm" onClick={onLogout}>Logout</button>
+            </div>
           </div>
-        </div>
-        <div className="grid grid-cols-2 gap-6 mb-8 w-full">
-          <div className="bg-green-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-green-600">₹ {totalRevenue}</span>
-            <span className="text-gray-600">Total Revenue</span>
-          </div>
-          <div className="bg-orange-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-orange-600">₹ {totalReceive}</span>
-            <span className="text-gray-600">Total Received</span>
-        </div>
-          </div>
-        <div className="grid grid-cols-2 gap-6 mb-8 w-full">
-          <div className="bg-red-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-red-600">₹ {totalPending}</span>
-            <span className="text-gray-600">Total Pending</span>
-          </div>
-          <div className="bg-indigo-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-indigo-600">{totalCustomers}</span>
-            <span className="text-gray-600">Total Customers</span>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 gap-6 mb-8 w-full">
-          <div className="bg-yellow-50 rounded-xl p-6 flex flex-col items-center shadow w-full">
-            <span className="text-3xl font-bold text-yellow-600">{totalRecords}</span>
-            <span className="text-gray-600">Total Records</span>
-          </div>
-        </div>
-        <div className="flex justify-center">
-          <button className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg text-lg font-semibold transition" onClick={onLogout}>
-            Logout
-          </button>
         </div>
       </div>
-      
+
       {/* Action Buttons Section */}
-      <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-xl border border-gray-100">
-        <h3 className="text-xl font-bold text-gray-800 mb-4 text-center">Quick Actions</h3>
-        <div className="space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl p-6 sm:p-8 w-full max-w-5xl border border-gray-100">
+        <h3 className="text-xl font-bold text-gray-800 mb-4">Quick Actions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <button
-            className="w-full px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold shadow transition-colors flex items-center justify-center"
+            className="group w-full text-left px-4 py-4 rounded-xl border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition flex items-center justify-between"
             onClick={handleOpenCustomers}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0V7m8 0a4 4 0 00-8 0" />
-            </svg>
-            My Customers
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-indigo-600 text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0" /></svg>
+              </span>
+              <div>
+                <div className="font-semibold text-gray-800">My Customers</div>
+                <div className="text-xs text-gray-500">View, share and manage your customers</div>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </button>
+
           <button
-            className="w-full px-6 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold shadow transition-colors flex items-center justify-center"
+            className="group w-full text-left px-4 py-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition flex items-center justify-between"
             onClick={() => setShowAddCustomer(true)}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            Add New Customer
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-purple-600 text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v12m6-6H6" /></svg>
+              </span>
+              <div>
+                <div className="font-semibold text-gray-800">Add New Customer</div>
+                <div className="text-xs text-gray-500">Create a customer with WhatsApp number</div>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </button>
+
           <button
-            className="w-full px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold shadow transition-colors flex items-center justify-center"
+            className="group w-full text-left px-4 py-4 rounded-xl border border-gray-200 hover:border-green-300 hover:bg-green-50 transition flex items-center justify-between"
             onClick={() => setShowModal(true)}
           >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Add Daily Entry
+            <div className="flex items-center gap-3">
+              <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-green-600 text-white">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h6l6 6v10a2 2 0 01-2 2z" /></svg>
+              </span>
+              <div>
+                <div className="font-semibold text-gray-800">Add Daily Entry</div>
+                <div className="text-xs text-gray-500">Record quantity and amount for a day</div>
+              </div>
+            </div>
+            <svg className="w-5 h-5 text-gray-400 group-hover:text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
           </button>
-          
-          {/* Payment Option Button - Show only if not added */}
+
           {!paymentOption.hasPaymentOption && (
             <button
-              className="w-full px-6 py-3 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-semibold shadow transition-colors flex items-center justify-center"
+              className="group w-full text-left px-4 py-4 rounded-xl border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition flex items-center justify-between"
               onClick={() => setShowPaymentOptionModal(true)}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-              </svg>
-              Add Payment Option
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-amber-500 text-white">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+                </span>
+                <div>
+                  <div className="font-semibold text-gray-800">Add Payment Option</div>
+                  <div className="text-xs text-gray-500">Save your UPI ID to receive payments</div>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
             </button>
           )}
-          
-          {/* My Payment Option Button - Show only if added */}
+
           {paymentOption.hasPaymentOption && (
             <button
-              className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold shadow transition-colors flex items-center justify-center"
+              className="group w-full text-left px-4 py-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition flex items-center justify-between"
               onClick={handleShowPaymentOption}
             >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1zm12 0h2a1 1 0 001-1V6a1 1 0 00-1-1h-2a1 1 0 00-1 1v1a1 1 0 001 1zM5 20h2a1 1 0 001-1v-1a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" />
-              </svg>
-              My Payment Option
+              <div className="flex items-center gap-3">
+                <span className="inline-flex items-center justify-center w-9 h-9 rounded-lg bg-blue-600 text-white">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V6a1 1 0 00-1-1H5a1 1 0 00-1 1v1a1 1 0 001 1z" /></svg>
+                </span>
+                <div>
+                  <div className="font-semibold text-gray-800">My Payment Option</div>
+                  <div className="text-xs text-gray-500">Generate UPI QR for a custom amount</div>
+                </div>
+              </div>
+              <svg className="w-5 h-5 text-gray-400 group-hover:text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" /></svg>
             </button>
           )}
         </div>
       </div>
-      
+
       {/* Add New Customer Modal */}
       {showAddCustomer && (
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
@@ -1804,7 +2007,7 @@ function AppContent() {
     }
   }, []);
 
-  const [view, setView] = React.useState('login');
+  const [view, setView] = React.useState('home');
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const [isAuthenticated, setIsAuthenticated] = React.useState(false);
   const [isInitializing, setIsInitializing] = React.useState(true);
@@ -1816,21 +2019,26 @@ function AppContent() {
   const [loginData, setLoginData] = useState({ mobile: "", mpin: "" });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [dashboard, setDashboard] = useState(null); // 'user' | 'admin' | null
+  const [dashboard, setDashboard] = React.useState(null); // 'user' | 'admin' | null
   const [customers, setCustomers] = useState([]);
 
-  // Check authentication status on app load
+  // Check authentication status on app load - Modified to allow direct access
   React.useEffect(() => {
     const checkAuthStatus = async () => {
       try {
         // Check for URL parameters
         const params = new URLSearchParams(window.location.search);
+        console.log('URL params:', window.location.search);
+        console.log('View param:', params.get('view'));
+        
         if (params.get('view') === 'customers') {
+          console.log('Setting view to customers from URL param');
           setView('customers');
           setIsInitializing(false);
           return;
         }
         if (params.get('view') === 'login') {
+          console.log('Setting view to login from URL param');
           setView('login');
           setIsInitializing(false);
           return;
@@ -1841,8 +2049,17 @@ function AppContent() {
         
         if (customerMatch) {
           const customerId = customerMatch[1];
+          console.log('Customer URL detected, customerId:', customerId);
           setSharedCustomerId(customerId);
-          setView('customer-login');
+          // Don't set a specific view - let the routing logic handle it
+          setIsInitializing(false);
+          return;
+        }
+        
+        // Check if user wants to go directly to customers view
+        const directCustomers = localStorage.getItem('directCustomers');
+        if (directCustomers === 'true') {
+          setView('customers');
           setIsInitializing(false);
           return;
         }
@@ -1862,12 +2079,14 @@ function AppContent() {
           // Restore last view if user was not authenticated
           setView(lastView);
         } else {
-          // If no last view or last view is home, show login page
-          setView('login');
+          // Default to home view instead of login
+          console.log('No auth or last view, defaulting to home');
+          setView('home');
         }
       } catch (error) {
         console.error('Auth check failed:', error);
       } finally {
+        console.log('Setting isInitializing to false, final view state:', view);
         setIsInitializing(false);
       }
     };
@@ -1875,11 +2094,43 @@ function AppContent() {
     checkAuthStatus();
   }, []);
 
+  // Debug: Track view changes
+  React.useEffect(() => {
+    console.log('View state changed to:', view);
+  }, [view]);
+
+  // Handle URL changes for customer verification
+  React.useEffect(() => {
+    const handleUrlChange = () => {
+      const path = window.location.pathname;
+      const customerMatch = path.match(/\/customer\/([a-zA-Z0-9]+)/);
+      
+      if (customerMatch) {
+        const customerId = customerMatch[1];
+        console.log('URL changed - Customer URL detected, customerId:', customerId);
+        setSharedCustomerId(customerId);
+        setCustomerView(false);
+        setCustomerData(null);
+      }
+    };
+
+    // Listen for popstate events (back/forward buttons)
+    window.addEventListener('popstate', handleUrlChange);
+    
+    // Initial check
+    handleUrlChange();
+
+    return () => {
+      window.removeEventListener('popstate', handleUrlChange);
+    };
+  }, []);
+
   // Fetch customers on mount and after adding a customer
   // Removed - UserDashboard handles its own customer data
 
   // Save current view to localStorage
   const saveCurrentView = (newView) => {
+    console.log('saveCurrentView called with:', newView);
     localStorage.setItem('lastView', newView);
     setView(newView);
   };
@@ -1969,33 +2220,16 @@ function AppContent() {
     setLoginData({ mobile: "", mpin: "" });
   };
 
-  // Customer login functionality
-  const handleCustomerLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
-    try {
-      const response = await axios.post("/api/auth/customer-login", {
-        whatsapp: loginData.mpin
-      });
-      
-      if (response.data.success) {
-        setCustomerData(response.data.customer);
-        setCustomerView(true);
-        setMessage("Login successful!");
-      }
-    } catch (err) {
-      setMessage(err.response?.data?.message || "Login failed. Please check your credentials.");
-    }
-    setLoading(false);
-  };
+
 
   // Handle customer logout
   const handleCustomerLogout = () => {
     setCustomerView(false);
     setCustomerData(null);
     setSharedCustomerId(null);
-    setView('login');
+    setView('home');
+    // Update URL to remove the customer path
+    window.history.pushState({}, '', '/');
   };
 
   // Share customer functionality
@@ -2188,7 +2422,7 @@ function AppContent() {
   }
 
   // Show login required message if not authenticated and not already on login page
-  if (!isAuthenticated && view !== 'login' && view !== 'register') {
+  if (!isAuthenticated && view !== 'login' && view !== 'register' && view !== 'customers') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-100 dark:from-gray-900 dark:to-gray-800">
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md text-center relative">
@@ -2222,70 +2456,27 @@ function AppContent() {
     );
   }
 
-  // Show customer dashboard if customer is logged in
+  // Show customer records if customer is verified
   if (customerView && customerData) {
-    return <CustomerDashboard customerId={customerData._id} onLogout={handleCustomerLogout} onOpenSettings={() => setSettingsOpen(true)} />;
+    return <CustomerRecords customer={customerData} onLogout={handleCustomerLogout} />;
   }
 
-  // Show customer login if shared customer ID is present
+  // Show customer verification if shared customer ID is present
   if (sharedCustomerId && !customerView) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-green-100 dark:from-gray-900 dark:to-gray-800">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md relative">
-          {/* Settings Button for Customer Login */}
-          <div className="absolute top-4 right-4">
-            <SettingsButton onClick={() => setSettingsOpen(true)} />
-          </div>
-          <div className="text-center mb-6">
-            <div className="mb-4">
-              <Logo size="large" className="justify-center" />
-            </div>
-            <h2 className="text-3xl font-bold text-blue-600 dark:text-blue-400 mb-2">{t.customerLogin}</h2>
-            <p className="text-gray-600 dark:text-gray-400">{t.customerLoginDescription}</p>
-          </div>
-          
-          <form onSubmit={handleCustomerLogin} className="space-y-4">
-            <div>
-              <label className="block text-gray-700 dark:text-gray-300 font-semibold mb-2">{t.whatsappNumber}</label>
-              <input
-                type="text"
-                name="mpin"
-                value={loginData.mpin}
-                onChange={handleLoginChange}
-                className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                placeholder={t.enterWhatsapp}
-                required
-              />
-            </div>
-            
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition disabled:bg-gray-400"
-            >
-              {loading ? t.loggingIn : t.viewMyRecords}
-            </button>
-          </form>
-          
-          {message && (
-            <div className="mt-4 p-3 rounded text-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300">
-              {message}
-            </div>
-          )}
-          
-          <div className="mt-6 text-center">
-            <button
-              onClick={() => {
-                setSharedCustomerId(null);
-                setView('login');
-              }}
-              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-semibold"
-            >
-              {t.backToMainLogin}
-            </button>
-          </div>
-        </div>
-      </div>
+      <CustomerVerification
+        customerId={sharedCustomerId}
+        onVerificationSuccess={(customer) => {
+          setCustomerData(customer);
+          setCustomerView(true);
+        }}
+        onBack={() => {
+          setSharedCustomerId(null);
+          setView('home');
+          // Update URL to remove the customer path
+          window.history.pushState({}, '', '/');
+        }}
+      />
     );
   }
 
@@ -2326,6 +2517,27 @@ function AppContent() {
               {t.register}
             </button>
           </div>
+          {/* Quick Actions Section */}
+          <div className="w-full mb-8">
+            <h2 className="text-2xl font-bold text-center text-gray-800 dark:text-gray-200 mb-4">Quick Actions</h2>
+            <div className="flex justify-center">
+              <button
+                className="px-8 py-4 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-lg shadow transition flex items-center gap-3"
+                onClick={() => {
+                  localStorage.setItem('directCustomers', 'true');
+                  saveCurrentView('customers');
+                }}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0V7m8 0a4 4 0 00-8 0" />
+                </svg>
+                My Customers
+              </button>
+            </div>
+            <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-3">
+              View sample customer data without logging in • Login for full access
+            </p>
+          </div>
           <div className="w-full flex flex-col items-center">
             <ul className="text-left list-disc list-inside text-gray-600 dark:text-gray-400 mt-4 mb-2">
               {t.features.map((feature, index) => (
@@ -2339,7 +2551,24 @@ function AppContent() {
   }
 
   if (view === "customers") {
-    return <CustomersPage authData={{ userId: localStorage.getItem('userId'), userName: localStorage.getItem('userName') }} />;
+    console.log('Rendering customers view, current view state:', view);
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-100">
+        <div className="w-full max-w-6xl mx-auto p-4">
+          <div className="text-center mb-6">
+            <h1 className="text-3xl font-extrabold text-blue-700 mb-2">Customer Records</h1>
+            <p className="text-gray-700">
+              View and manage your customer milk records. Login to access your real data.
+            </p>
+          </div>
+          <CustomersPage authData={{
+            userId: localStorage.getItem('userId'),
+            userRole: localStorage.getItem('userRole'),
+            userName: localStorage.getItem('userName')
+          }} />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -2357,6 +2586,16 @@ function AppContent() {
             onClick={() => { saveCurrentView("home"); setMessage(""); }}
           >
             {t.home}
+          </button>
+          <button
+            className={`px-4 py-2 font-semibold border-t border-b border-gray-300 dark:border-gray-600 focus:outline-none ${view === "customers" ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
+            onClick={() => { 
+              localStorage.setItem('directCustomers', 'true');
+              saveCurrentView("customers"); 
+              setMessage(""); 
+            }}
+          >
+            Customers
           </button>
           <button
             className={`px-4 py-2 font-semibold border-t border-b border-gray-300 dark:border-gray-600 focus:outline-none ${view === "login" ? "bg-blue-600 text-white" : "bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}
@@ -2495,13 +2734,7 @@ function AppContent() {
             </button>
           </form>
         )}
-        {view === "customers" && (
-          <CustomersPage authData={{
-            userId: localStorage.getItem('userId'),
-            userRole: localStorage.getItem('userRole'),
-            userName: localStorage.getItem('userName')
-          }} />
-        )}
+
       </div>
       <InstallPrompt />
       <Settings isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
