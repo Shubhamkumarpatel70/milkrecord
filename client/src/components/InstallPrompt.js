@@ -1,93 +1,138 @@
 import React, { useState, useEffect } from 'react';
 
+// LocalStorage helper keys
+const DISMISS_UNTIL_KEY = 'pwaInstallDismissedUntil';
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
 function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showFab, setShowFab] = useState(false);
+  const [showIosGuide, setShowIosGuide] = useState(false);
 
   useEffect(() => {
-    // Listen for the beforeinstallprompt event
+    const now = Date.now();
+    const dismissedUntil = parseInt(localStorage.getItem(DISMISS_UNTIL_KEY) || '0', 10);
+    const snoozed = now < dismissedUntil;
+
+    const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+
     const handleBeforeInstallPrompt = (e) => {
-      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
-      // Stash the event so it can be triggered later
       setDeferredPrompt(e);
-      // Show the install prompt
-      setShowInstallPrompt(true);
+      setShowFab(true);
+      if (!snoozed) setShowInstallPrompt(true);
     };
 
-    // Listen for the appinstalled event
     const handleAppInstalled = () => {
-      console.log('PWA was installed');
       setShowInstallPrompt(false);
+      setShowFab(false);
       setDeferredPrompt(null);
     };
 
+    // iOS Safari doesn't support beforeinstallprompt
+    if (isIos && isSafari && !snoozed) {
+      setShowIosGuide(true);
+      setShowFab(true);
+    }
+
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
   }, []);
 
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) return;
-
-    // Show the install prompt
-    deferredPrompt.prompt();
-
-    // Wait for the user to respond to the prompt
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      console.log('User accepted the install prompt');
-    } else {
-      console.log('User dismissed the install prompt');
+  const requestInstall = async () => {
+    if (!deferredPrompt) {
+      // For iOS/Safari show guide modal
+      setShowIosGuide(true);
+      setShowInstallPrompt(true);
+      return;
     }
-
-    // Clear the deferredPrompt
-    setDeferredPrompt(null);
-    setShowInstallPrompt(false);
+    deferredPrompt.prompt();
+    try {
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome !== 'accepted') {
+        // user dismissed, keep FAB visible
+      }
+    } finally {
+      setDeferredPrompt(null);
+      setShowInstallPrompt(false);
+    }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = (snoozeMs = ONE_WEEK_MS) => {
+    const until = Date.now() + snoozeMs;
+    localStorage.setItem(DISMISS_UNTIL_KEY, String(until));
     setShowInstallPrompt(false);
+    // Keep FAB if install still possible
+    setShowFab(!!deferredPrompt || showIosGuide);
   };
 
-  if (!showInstallPrompt) return null;
+  // Floating Install Button (persistent)
+  const FabButton = () => (
+    !showFab ? null : (
+      <button
+        onClick={() => { setShowInstallPrompt(true); }}
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center gap-2 px-4 py-2 rounded-full shadow-lg bg-blue-600 text-white hover:bg-blue-700 focus:outline-none"
+        aria-label="Install App"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v12m0 0l-3-3m3 3l3-3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/></svg>
+        <span className="hidden sm:inline">Install App</span>
+      </button>
+    )
+  );
 
-  return (
-    <div className="fixed bottom-4 left-4 right-4 bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
-            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
+  // Modal Popup
+  const Modal = () => (
+    !showInstallPrompt ? null : (
+      <div className="fixed inset-0 z-50 flex items-center justify-center">
+        <div className="absolute inset-0 bg-black/40" onClick={() => handleDismiss(24*60*60*1000)}></div>
+        <div className="relative bg-white rounded-2xl shadow-2xl w-[92%] max-w-md p-6">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow">
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v12m0 0l-3-3m3 3l3-3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/></svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Install Milk Record</h3>
+              <p className="text-sm text-gray-600 mt-1">Add this app to your device for faster access and a full-screen experience.</p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-sm font-semibold text-gray-900">Install Milk Record App</h3>
-            <p className="text-xs text-gray-600">Add to home screen for quick access</p>
+
+          {showIosGuide && !deferredPrompt && (
+            <div className="mt-4 rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
+              On iPhone/iPad: tap the Share button in Safari and choose <span className="font-semibold">Add to Home Screen</span>.
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              onClick={() => handleDismiss()}
+              className="px-4 py-2 text-gray-600 hover:text-gray-800"
+            >
+              Later
+            </button>
+            <button
+              onClick={requestInstall}
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700"
+            >
+              Install
+            </button>
           </div>
-        </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleInstallClick}
-            className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 transition"
-          >
-            Install
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="px-3 py-1 text-gray-500 text-sm hover:text-gray-700 transition"
-          >
-            Dismiss
-          </button>
         </div>
       </div>
-    </div>
+    )
+  );
+
+  return (
+    <>
+      <FabButton />
+      <Modal />
+    </>
   );
 }
 
-export default InstallPrompt; 
+export default InstallPrompt;
