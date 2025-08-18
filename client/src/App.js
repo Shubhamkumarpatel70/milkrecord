@@ -315,7 +315,7 @@ function CustomersPage({ authData }) {
 
   // Share customer functionality
   const handleShareCustomer = async (customerId) => {
-    const shareUrl = `${window.location.protocol}//${window.location.hostname}:3000/customer/${customerId}`;
+    const shareUrl = `${window.location.origin}/customer/${customerId}`;
     
     // Create a share modal instead of relying on clipboard
     const shareModal = document.createElement('div');
@@ -468,12 +468,25 @@ function CustomersPage({ authData }) {
     
     document.body.appendChild(shareModal);
     
-    // Close modal when clicking outside
-    shareModal.addEventListener('click', (e) => {
-        if (e.target === shareModal) {
-            shareModal.remove();
+    // Close modal when clicking outside, on close button (×), or with ESC key
+    const maybeClose = (e) => {
+        if (e.type === 'click') {
+            if (e.target === shareModal) {
+                shareModal.remove();
+                return;
+            }
+            if (e.target && e.target.tagName === 'BUTTON' && (e.target.textContent || '').trim() === '×') {
+                shareModal.remove();
+                return;
+            }
         }
-    });
+        if (e.type === 'keydown' && e.key === 'Escape') {
+            shareModal.remove();
+            window.removeEventListener('keydown', maybeClose);
+        }
+    };
+    shareModal.addEventListener('click', maybeClose);
+    window.addEventListener('keydown', maybeClose);
   };
 
   return (

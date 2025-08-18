@@ -17,6 +17,8 @@ function InstallPrompt() {
 
     const isIos = /iphone|ipad|ipod/i.test(window.navigator.userAgent);
     const isSafari = /^((?!chrome|android).)*safari/i.test(window.navigator.userAgent);
+    const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    const isInstalledIos = typeof window.navigator.standalone !== 'undefined' && window.navigator.standalone;
 
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
@@ -32,16 +34,27 @@ function InstallPrompt() {
     };
 
     // iOS Safari doesn't support beforeinstallprompt
-    if (isIos && isSafari && !snoozed) {
+    if (!isStandalone && !isInstalledIos && isIos && isSafari && !snoozed) {
       setShowIosGuide(true);
       setShowFab(true);
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+
+    // Fallback: if beforeinstallprompt never fires (desktop Chrome sometimes after first navigation),
+    // show FAB after a short delay when app is not installed and user hasn't snoozed.
+    const fallbackTimer = setTimeout(() => {
+      const stillNotInstalled = !(window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) && !isInstalledIos;
+      if (stillNotInstalled && !snoozed) {
+        setShowFab(true);
+        // Don't force modal open on desktop; leave to user tap
+      }
+    }, 3000);
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      clearTimeout(fallbackTimer);
     };
   }, []);
 
