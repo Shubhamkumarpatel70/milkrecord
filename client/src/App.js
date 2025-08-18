@@ -478,40 +478,34 @@ function CustomersPage({ authData }) {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-green-100">
-      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-10 mt-10 border border-gray-100">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-blue-100 mr-3">
-              <svg className="w-7 h-7 text-blue-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0V7m8 0a4 4 0 00-8 0" /></svg>
-            </span>
-            <div>
-              <h2 className="text-3xl font-bold text-blue-700">My Customers</h2>
-              {isDemoMode && (
-                <p className="text-sm text-orange-600 font-medium mt-1">
-                  🎭 Demo Mode - Showing sample data
-                </p>
-              )}
+      <div className="w-full max-w-3xl bg-white rounded-3xl shadow-2xl p-6 sm:p-10 mt-10 border border-gray-100">
+        <div className="mb-6">
+          <div className="rounded-2xl bg-gradient-to-r from-blue-50 to-green-50 p-5 border border-blue-100">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-blue-700">Customer Records</h2>
+                <p className="text-gray-600 mt-1 text-sm sm:text-base">View and manage your customer milk records.</p>
+                {isDemoMode && (
+                  <p className="text-xs sm:text-sm text-orange-600 font-medium mt-2">🎭 Demo Mode - Showing sample data</p>
+                )}
+              </div>
+              <button
+                onClick={() => window.saveCurrentView('home')}
+                className="hidden sm:inline-flex px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition items-center"
+              >
+                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
+                Back to Dashboard
+              </button>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            {isDemoMode && (
-              <button
-                onClick={() => window.saveCurrentView('login')}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition"
-              >
-                Login to View Real Data
-              </button>
-            )}
-            <button
-              onClick={() => window.saveCurrentView('home')}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition flex items-center"
-            >
-              <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Dashboard
-            </button>
-          </div>
+        </div>
+        <div className="sm:hidden -mt-2 mb-4">
+          <button
+            onClick={() => window.saveCurrentView('home')}
+            className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition"
+          >
+            Back to Dashboard
+          </button>
         </div>
         {isDemoMode && (
           <div className="mb-6 p-4 bg-gradient-to-r from-orange-100 to-yellow-100 border border-orange-300 rounded-xl">
@@ -537,7 +531,7 @@ function CustomersPage({ authData }) {
         ) : summaries.length === 0 ? (
           <div className="text-center py-4">No customer records found.</div>
         ) : (
-          <div className="overflow-x-auto rounded-xl">
+          <div className="overflow-x-auto rounded-xl hidden sm:block">
             <table className="min-w-full bg-white border border-gray-200 rounded-xl shadow text-gray-800">
               <thead className="bg-blue-100 sticky top-0 z-10">
                 <tr>
@@ -599,6 +593,38 @@ function CustomersPage({ authData }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {/* Mobile Cards */}
+        {!loading && summaries.length > 0 && (
+          <div className="sm:hidden space-y-3 mt-4">
+            {summaries.map((s, i) => (
+              <div key={i} className="border border-gray-200 rounded-xl p-4 shadow-sm bg-white">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-base font-semibold text-gray-900">{s.name}</div>
+                    <div className="text-xs text-gray-600 mt-0.5">{formatMonth(s.month)} • {s.whatsapp || '-'}</div>
+                  </div>
+                  <span className={`px-2 py-1 text-xs rounded ${s.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>{s.status === 'paid' ? 'Paid' : 'Unpaid'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-3 text-sm text-gray-700">
+                  <div>Days: <span className="font-semibold">{s.totalDays}</span></div>
+                  <div>Total: <span className="font-semibold">₹ {s.totalAmount}</span></div>
+                  <div className="col-span-2">Remaining: <span className="font-semibold text-red-600">₹ {Math.max(0, s.totalAmount - (s.paidAmount || 0))}</span></div>
+                </div>
+                <div className="mt-4 flex gap-2">
+                  <button onClick={() => handleView(s.userId, s.month, s.name)} className="flex-1 px-3 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold">View</button>
+                  {isAuthenticated ? (
+                    <>
+                      <button onClick={() => { setPaymentModal({ open: true, record: s }); setPaymentType('total'); setCustomAmount(''); }} className={`px-3 py-2 rounded-lg text-sm font-semibold ${s.status === 'paid' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>{s.status === 'paid' ? 'Paid' : 'Unpaid'}</button>
+                      <button onClick={() => handleShareCustomer(s.userId)} className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold">Share</button>
+                    </>
+                  ) : (
+                    <button disabled className="px-3 py-2 bg-gray-400 text-white rounded-lg text-sm font-semibold">Share</button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
