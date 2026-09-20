@@ -41,7 +41,7 @@ function CustomLogo({ size = 'medium', className = '', showText = true, variant 
         <img 
           src={customLogoConfig.imageSrc} 
           alt="Milk Record Logo" 
-          className={`${sizeClasses[size]} object-contain`}
+          className={`${sizeClasses[size]} object-contain rounded-full`}
         />
         {showText && (
           <span className={`font-bold text-blue-600 ${textSizeClasses[size]}`}>

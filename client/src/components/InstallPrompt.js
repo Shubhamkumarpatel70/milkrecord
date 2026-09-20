@@ -102,9 +102,9 @@ function InstallPrompt() {
   // Modal Popup
   const Modal = () => (
     !showInstallPrompt ? null : (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4">
         <div className="absolute inset-0 bg-black/40" onClick={() => handleDismiss(24*60*60*1000)}></div>
-        <div className="relative bg-white rounded-2xl shadow-2xl w-[92%] max-w-md p-6">
+        <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-full sm:max-w-md p-4 sm:p-6 mx-2 sm:mx-0 max-h-[90vh] overflow-auto">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow">
               <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v12m0 0l-3-3m3 3l3-3M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1"/></svg>

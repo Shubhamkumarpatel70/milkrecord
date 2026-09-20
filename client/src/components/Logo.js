@@ -31,12 +31,12 @@ function Logo({ size = 'medium', className = '', showText = true, variant = 'def
           {/* Milk level */}
           <rect x="9" y="15" width="6" height="3" fill="#FEF3C7" rx="1"/>
           {/* Milk drop */}
-          <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="#3B82F6"/>
+          <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="#0077B6"/>
           {/* Chart bars */}
-          <rect x="8" y="18" width="1.5" height="2" fill="#10B981" rx="0.5"/>
-          <rect x="10" y="17" width="1.5" height="3" fill="#10B981" rx="0.5"/>
-          <rect x="12" y="16" width="1.5" height="4" fill="#10B981" rx="0.5"/>
-          <rect x="14" y="15" width="1.5" height="5" fill="#10B981" rx="0.5"/>
+            <rect x="8" y="18" width="1.5" height="2" fill="#0077B6" rx="0.5"/>
+            <rect x="10" y="17" width="1.5" height="3" fill="#0077B6" rx="0.5"/>
+            <rect x="12" y="16" width="1.5" height="4" fill="#0077B6" rx="0.5"/>
+            <rect x="14" y="15" width="1.5" height="5" fill="#0077B6" rx="0.5"/>
         </svg>
       ),
       text: 'MILK RECORD'
@@ -49,7 +49,7 @@ function Logo({ size = 'medium', className = '', showText = true, variant = 'def
           {/* Milk bottle */}
           <path d="M9 6h6v2h-6V6zm-1 3h8v12H8V9z" fill="#4F46E5"/>
           {/* Milk drop */}
-          <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="#3B82F6"/>
+          <path d="M12 10c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" fill="#0077B6"/>
         </svg>
       ),
       text: 'MR'

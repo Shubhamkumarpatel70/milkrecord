@@ -59,8 +59,8 @@ const CustomerRecords = ({ customer, onLogout }) => {
               {w.map((d, j) => d ? (
                 <td key={j} className={
                   'p-1 rounded-lg ' +
-                  (d.record ? 
-                    (d.record.status === 'paid' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-yellow-200 text-yellow-800 font-semibold') 
+                  (d.record ?
+                    (d.record.status === 'paid' ? 'bg-green-200 text-green-800 font-semibold' : 'bg-red-200 text-red-800 font-semibold')
                     : 'bg-red-100 text-red-700')
                 }>
                   <div className="text-xs font-bold">{d.date.slice(-2)}</div>
