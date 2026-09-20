@@ -134,13 +134,17 @@ export function MainAppContent() {
       setTotalCustomers(6);
       setTotalRecords(28);
       setCustomers([
-        { userId: 'c1', name: 'Ramesh Patel', whatsapp: '9876543210', month: '2024-01', totalDays: 15, totalAmount: 4500, paidAmount: 3000, status: 'unpaid' },
-        { userId: 'c2', name: 'Suresh Verma', whatsapp: '9876543211', month: '2024-01', totalDays: 20, totalAmount: 6000, paidAmount: 6000, status: 'paid' },
-        { userId: 'c3', name: 'Anil Sharma', whatsapp: '9876543212', month: '2024-01', totalDays: 12, totalAmount: 3600, paidAmount: 2000, status: 'unpaid' },
+        { userId: 'c1', name: 'Ramesh Patel', whatsapp: '9876543210', month: selectedMonth, totalDays: 15, totalAmount: 4500, paidAmount: 3000, status: 'unpaid' },
+        { userId: 'c2', name: 'Suresh Verma', whatsapp: '9876543211', month: selectedMonth, totalDays: 20, totalAmount: 6000, paidAmount: 6000, status: 'paid' },
+        { userId: 'c3', name: 'Anil Sharma', whatsapp: '9876543212', month: selectedMonth, totalDays: 12, totalAmount: 3600, paidAmount: 2000, status: 'unpaid' },
+        { userId: 'c4', name: 'Priya Singh', whatsapp: '9876543213', month: selectedMonth, totalDays: 18, totalAmount: 5400, paidAmount: 5400, status: 'paid' },
+        { userId: 'c5', name: 'Vikram Choudhary', whatsapp: '9876543214', month: selectedMonth, totalDays: 10, totalAmount: 3000, paidAmount: 1500, status: 'unpaid' }
       ]);
       setRecords([
-        { date: '2024-01-15', customerName: 'Ramesh Patel', shift: 'morning', quantityKg: 2.5, amount: 125, status: 'paid' },
-        { date: '2024-01-15', customerName: 'Suresh Verma', shift: 'evening', quantityKg: 3.0, amount: 150, status: 'unpaid' },
+        { _id: 'r1', createdAt: `${selectedMonth}-15`, customer: 'Ramesh Patel', customerName: 'Ramesh Patel', shift: 'morning', quantityKg: 2.5, amount: 125, status: 'paid', paidAmount: 125 },
+        { _id: 'r2', createdAt: `${selectedMonth}-15`, customer: 'Suresh Verma', customerName: 'Suresh Verma', shift: 'evening', quantityKg: 3.0, amount: 150, status: 'unpaid', paidAmount: 0 },
+        { _id: 'r3', createdAt: `${selectedMonth}-14`, customer: 'Anil Sharma', customerName: 'Anil Sharma', shift: 'morning', quantityKg: 4.0, amount: 200, status: 'paid', paidAmount: 200 },
+        { _id: 'r4', createdAt: `${selectedMonth}-14`, customer: 'Priya Singh', customerName: 'Priya Singh', shift: 'evening', quantityKg: 2.0, amount: 100, status: 'paid', paidAmount: 100 }
       ]);
       return;
     }
@@ -176,6 +180,12 @@ export function MainAppContent() {
         setTotalRecords(resTotal.data.recordCount || 0);
       }
 
+      // Fetch Detailed Month Records
+      const resDetails = await axios.get(`/api/milk-records/details?userId=${userId}&month=${selectedMonth}`);
+      if (resDetails.data && Array.isArray(resDetails.data.records)) {
+        setRecords(resDetails.data.records);
+      }
+
       // Fetch Payment Option UPI
       const resUpi = await axios.get(`/api/auth/payment-option/${userId}`);
       if (resUpi.data && resUpi.data.paymentOptions) {
@@ -189,7 +199,7 @@ export function MainAppContent() {
 
   useEffect(() => {
     refreshData();
-  }, [isAuthenticated, isDemoMode]);
+  }, [isAuthenticated, isDemoMode, selectedMonth]);
 
   // Record Entry Submission
   const handleSaveRecord = async (e) => {
@@ -273,8 +283,21 @@ export function MainAppContent() {
     );
   }
 
+  const handleDeleteCustomer = async (customerId, customerName) => {
+    if (!window.confirm(`Are you sure you want to remove customer ${customerName}?`)) return;
+    try {
+      if (isAuthenticated && customerId) {
+        await axios.delete(`/api/customers/${customerId}`);
+      }
+      setCustomers(prev => prev.filter(c => c._id !== customerId && c.name !== customerName));
+      refreshData();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 transition-colors duration-200 overflow-x-hidden">
       
       {/* Top Offline / Sync Status Bar */}
       <SyncStatusBanner
@@ -310,7 +333,7 @@ export function MainAppContent() {
         />
 
         {/* Main Content Workspace */}
-        <main className="flex-1 lg:ml-64 p-4 sm:p-6 lg:p-8 min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 lg:ml-64 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-h-[calc(100vh-4rem)]">
           {currentView === 'dashboard' && (
             <DashboardPage
               todaysMilkKg={todaysMilkKg}
@@ -321,6 +344,7 @@ export function MainAppContent() {
               totalCustomers={totalCustomers}
               totalRecords={totalRecords}
               customers={customers}
+              records={records}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
               onOpenAddCustomer={() => setShowAddCustomerModal(true)}
               onOpenPaymentQR={() => setShowPaymentQRModal(true)}
@@ -331,15 +355,20 @@ export function MainAppContent() {
           {currentView === 'customers' && (
             <CustomerManagementPage
               customers={customers}
+              records={records}
               onAddCustomer={() => setShowAddCustomerModal(true)}
               onViewCustomer={(u, m, n) => {
-                alert(`Viewing records calendar for ${n} (${m})`);
+                setSelectedMonth(m || selectedMonth);
+                setCurrentView('records');
               }}
-              onShareCustomer={(u, n) => {
+              onShareCustomer={(u, n, whatsapp) => {
+                const phone = whatsapp || '';
                 const text = encodeURIComponent(`Hello ${n}, view your latest milk record details on Milk Record SaaS!`);
-                window.open(`https://wa.me/?text=${text}`, '_blank');
+                const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+                window.open(url, '_blank');
               }}
               onMarkPayment={(cust) => setShowPaymentSettleModal(cust)}
+              onDeleteCustomer={handleDeleteCustomer}
               isAuthenticated={isAuthenticated}
             />
           )}

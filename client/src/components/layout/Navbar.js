@@ -20,10 +20,10 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
         
         {/* Left Section: Mobile Menu Toggle & Brand */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={onToggleSidebar}
-            className="lg:hidden p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="lg:hidden p-2.5 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Toggle navigation"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -35,11 +35,11 @@ export default function Navbar({
             className="flex items-center gap-2 cursor-pointer group"
             onClick={() => onNavigate('dashboard')}
           >
-            <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-500 shadow-md group-hover:scale-105 transition-transform duration-200">
+            <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-gradient-to-tr from-sky-500 to-emerald-500 shadow-md group-hover:scale-105 transition-transform duration-200 shrink-0">
               <Logo className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="font-extrabold text-lg bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
+              <span className="font-extrabold text-base sm:text-lg bg-gradient-to-r from-sky-600 to-emerald-600 bg-clip-text text-transparent">
                 Milk Record
               </span>
               <span className="hidden sm:inline-block ml-2 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-sky-700 bg-sky-100 dark:bg-sky-900/40 dark:text-sky-300 rounded-full">

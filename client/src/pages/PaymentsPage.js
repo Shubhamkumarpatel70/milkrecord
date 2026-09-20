@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CreditCard, QrCode, Printer } from 'lucide-react';
+import { CreditCard, QrCode, Printer, Send } from 'lucide-react';
 
 export default function PaymentsPage({
   totalReceive = 0,
@@ -20,24 +20,32 @@ export default function PaymentsPage({
     }, 300);
   };
 
+  const handleSendReminder = (cust) => {
+    const remaining = Math.max(0, (cust.totalAmount || 0) - (cust.paidAmount || 0));
+    const phone = cust.whatsapp || '';
+    const text = encodeURIComponent(`Hello ${cust.name}, this is a friendly reminder regarding your pending milk record balance of ₹${remaining}. Kindly settle your payment via UPI QR or cash. Thank you!`);
+    const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
+    window.open(url, '_blank');
+  };
+
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-8 w-full max-w-full overflow-x-hidden">
       
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft">
         <div className="flex items-center gap-3">
-          <div className="p-3 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400">
+          <div className="p-2.5 sm:p-3 rounded-2xl bg-amber-100 dark:bg-amber-950 text-amber-600 dark:text-amber-400 shrink-0">
             <CreditCard className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Payment Settlements & UPI QR</h1>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">Payment Settlements & UPI QR</h1>
             <p className="text-xs text-slate-500">Track paid amounts, customer dues, UPI QR collections, and print digital receipts.</p>
           </div>
         </div>
 
         <button
           onClick={onOpenPaymentQR}
-          className="btn-primary text-xs py-3 px-5 flex items-center justify-center gap-2 shadow-md"
+          className="btn-primary text-xs py-2.5 px-4 sm:px-5 flex items-center justify-center gap-2 shadow-md min-h-[44px] w-full sm:w-auto"
         >
           <QrCode className="w-4 h-4" />
           <span>Generate UPI Payment QR</span>
@@ -45,27 +53,27 @@ export default function PaymentsPage({
       </div>
 
       {/* Summary Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Paid Received</span>
-          <div className="text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
+          <div className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400">
             {formatCurrency(totalReceive)}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Successfully settled across accounts</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Outstanding Dues</span>
-          <div className="text-3xl font-extrabold text-rose-600 dark:text-rose-400">
+          <div className="text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400">
             {formatCurrency(totalPending)}
           </div>
           <span className="text-[11px] text-slate-500 mt-1 block">Pending collection from customers</span>
         </div>
 
-        <div className="p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
+        <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-1">UPI Receiver VPA</span>
-          <div className="text-base font-extrabold text-slate-800 dark:text-slate-100 font-mono truncate">
+          <div className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-100 font-mono truncate">
             {upiId || 'Not Configured'}
           </div>
           <span className="text-[11px] text-sky-600 font-semibold mt-1 block">Default UPI ID for QR scans</span>
@@ -73,14 +81,76 @@ export default function PaymentsPage({
 
       </div>
 
-      {/* Customer Settlement Table */}
+      {/* Customer Settlement Content */}
       <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft overflow-hidden">
         <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Customer Payment Dues</h3>
           <span className="text-xs text-slate-400">{customers.length} Customers</span>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* Mobile View (< 640px) */}
+        <div className="block sm:hidden divide-y divide-slate-100 dark:divide-slate-700/60">
+          {customers.map((c, i) => {
+            const total = c.totalAmount || 0;
+            const paid = c.paidAmount || 0;
+            const remaining = Math.max(0, total - paid);
+            const isPaid = c.status === 'paid' || remaining === 0;
+
+            return (
+              <div key={c._id || i} className="p-4 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">{c.name}</h4>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                    isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                  }`}>
+                    {isPaid ? 'Fully Paid ✓' : 'Pending Dues'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/50 text-xs">
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Total</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">₹{total}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Paid</span>
+                    <span className="font-bold text-emerald-600">₹{paid}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 text-[10px] uppercase font-bold block">Due</span>
+                    <span className={`font-bold ${remaining > 0 ? 'text-rose-600' : 'text-slate-400'}`}>₹{remaining}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    onClick={() => onMarkPayment && onMarkPayment(c)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1 min-h-[38px]"
+                  >
+                    Settle Payment
+                  </button>
+                  <button
+                    onClick={() => handleSendReminder(c)}
+                    className="p-2 rounded-xl bg-emerald-100 text-emerald-700 min-h-[38px] min-w-[38px] flex items-center justify-center"
+                    title="Send WhatsApp Reminder"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handlePrintReceipt(c)}
+                    className="p-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 min-h-[38px] min-w-[38px] flex items-center justify-center"
+                    title="Print Receipt"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Desktop View (>= 640px) */}
+        <div className="hidden sm:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 uppercase font-bold border-b border-slate-100 dark:border-slate-700">
               <tr>
@@ -100,7 +170,7 @@ export default function PaymentsPage({
                 const isPaid = c.status === 'paid' || remaining === 0;
 
                 return (
-                  <tr key={i} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
+                  <tr key={c._id || i} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
                     <td className="p-4 font-bold text-slate-800 dark:text-slate-100">{c.name}</td>
                     <td className="p-4 font-bold text-slate-800 dark:text-slate-200">₹{total}</td>
                     <td className="p-4 font-bold text-emerald-600">₹{paid}</td>
@@ -122,11 +192,18 @@ export default function PaymentsPage({
                         Settle Payment
                       </button>
                       <button
+                        onClick={() => handleSendReminder(c)}
+                        className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 transition-colors inline-block"
+                        title="Send WhatsApp Reminder"
+                      >
+                        <Send className="w-4 h-4 inline" />
+                      </button>
+                      <button
                         onClick={() => handlePrintReceipt(c)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors inline-block"
                         title="Print Digital Receipt"
                       >
-                        <Printer className="w-4 h-4" />
+                        <Printer className="w-4 h-4 inline" />
                       </button>
                     </td>
                   </tr>

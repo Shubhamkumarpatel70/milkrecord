@@ -29,8 +29,8 @@ export default function DashboardPage({
   totalPending = 0,
   totalCustomers = 0,
   totalRecords = 0,
-  recentActivity = [],
   customers = [],
+  records = [],
   onOpenAddRecord,
   onOpenAddCustomer,
   onOpenPaymentQR,
@@ -44,48 +44,64 @@ export default function DashboardPage({
     }).format(amount || 0);
   };
 
-  // Mock trend data for charts if API data is loading
-  const weeklyData = [
-    { day: 'Mon', milk: 65, revenue: 3250 },
-    { day: 'Tue', milk: 72, revenue: 3600 },
-    { day: 'Wed', milk: 68, revenue: 3400 },
-    { day: 'Thu', milk: 80, revenue: 4000 },
-    { day: 'Fri', milk: 75, revenue: 3750 },
-    { day: 'Sat', milk: 88, revenue: 4400 },
-    { day: 'Sun', milk: todaysMilkKg > 0 ? todaysMilkKg : 92, revenue: todaysMilkKg > 0 ? todaysMilkKg * 50 : 4600 },
-  ];
+  // Compute Weekly Trend Data dynamically from records
+  const daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const weeklyMap = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0, Sat: 0, Sun: 0 };
+  
+  if (Array.isArray(records) && records.length > 0) {
+    records.forEach(r => {
+      if (r.createdAt) {
+        const dateObj = new Date(r.createdAt);
+        const dayIdx = (dateObj.getDay() + 6) % 7; // Convert Sun-Sat to Mon-Sun
+        const dayName = daysOfWeek[dayIdx];
+        if (dayName) {
+          weeklyMap[dayName] += (r.quantityKg || 0);
+        }
+      }
+    });
+  }
 
-  const monthlyData = [
-    { month: 'Oct', milk: 1850, revenue: 92500 },
-    { month: 'Nov', milk: 2100, revenue: 105000 },
-    { month: 'Dec', milk: 2400, revenue: 120000 },
-    { month: 'Jan', milk: totalMilkQuantityKg > 0 ? totalMilkQuantityKg : 2650, revenue: totalRevenue > 0 ? totalRevenue : 132500 },
-  ];
+  const hasRecordData = Object.values(weeklyMap).some(v => v > 0);
 
-  // Top customers sorted by total amount or sample top 5
-  const topCustomers = customers && customers.length > 0
-    ? customers.slice(0, 5)
+  const weeklyData = daysOfWeek.map(day => ({
+    day,
+    milk: hasRecordData ? weeklyMap[day] : (day === 'Sun' && todaysMilkKg > 0 ? todaysMilkKg : Math.floor(Math.random() * 30) + 40),
+    revenue: (hasRecordData ? weeklyMap[day] : (day === 'Sun' && todaysMilkKg > 0 ? todaysMilkKg : 50)) * 50
+  }));
+
+  // Top customers sorted dynamically by totalAmount
+  const topCustomers = Array.isArray(customers) && customers.length > 0
+    ? [...customers].sort((a, b) => (b.totalAmount || 0) - (a.totalAmount || 0)).slice(0, 5)
+    : [];
+
+  // Recent activity built dynamically from actual records or fallbacks
+  const dynamicActivity = Array.isArray(records) && records.length > 0
+    ? records.slice(-4).reverse().map(r => ({
+        text: `Log: ${r.quantityKg || 2} Kg ${r.shift || 'morning'} shift for ${r.customer || r.customerName || 'Customer'}`,
+        time: r.createdAt ? new Date(r.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recently',
+        type: 'milk'
+      }))
     : [
-        { name: 'Ramesh Patel', whatsapp: '9876543210', totalAmount: 4500, status: 'paid' },
-        { name: 'Suresh Verma', whatsapp: '9876543211', totalAmount: 3800, status: 'unpaid' },
-        { name: 'Anil Sharma', whatsapp: '9876543212', totalAmount: 3200, status: 'paid' },
-        { name: 'Priya Singh', whatsapp: '9876543213', totalAmount: 2900, status: 'paid' },
+        { text: 'Added 2.5 Kg Morning milk entry for Ramesh Patel', time: '15 mins ago', type: 'milk' },
+        { text: 'Payment of ₹1,000 recorded via UPI QR', time: '1 hour ago', type: 'payment' },
+        { text: 'New customer "Suresh Verma" registered', time: '3 hours ago', type: 'user' },
+        { text: 'Cloud data backup auto-completed', time: '5 hours ago', type: 'system' }
       ];
 
   return (
-    <div className="space-y-6 animate-fade-in pb-8">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-8 w-full max-w-full overflow-x-hidden">
       
       {/* Top Banner / SaaS Welcome */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-sky-600 via-indigo-600 to-emerald-600 p-6 sm:p-8 text-white shadow-xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-sky-600 via-indigo-600 to-emerald-600 p-5 sm:p-8 text-white shadow-xl">
         <div className="absolute -right-10 -bottom-10 w-64 h-64 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
         
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 relative z-10">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 sm:gap-6 relative z-10">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold backdrop-blur-md mb-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 text-white text-xs font-semibold backdrop-blur-md mb-2 sm:mb-3">
               <Sparkles className="w-3.5 h-3.5 text-amber-300" />
               <span>Dairy Dashboard Overview</span>
             </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
+            <h1 className="text-xl sm:text-3xl lg:text-4xl font-black tracking-tight leading-tight">
               Milk Record SaaS Dashboard
             </h1>
             <p className="text-sky-100 text-xs sm:text-sm mt-1 max-w-xl">
@@ -93,17 +109,17 @@ export default function DashboardPage({
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={onOpenAddRecord}
-              className="px-4 py-2.5 rounded-xl bg-white text-sky-700 hover:bg-sky-50 font-bold text-xs shadow-md transition-all flex items-center gap-2"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white text-sky-700 hover:bg-sky-50 font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 min-h-[44px]"
             >
               <PlusCircle className="w-4 h-4 text-emerald-600" />
-              <span>Add Daily Milk Entry</span>
+              <span>Add Daily Entry</span>
             </button>
             <button
               onClick={onOpenAddCustomer}
-              className="px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs backdrop-blur-md transition-all flex items-center gap-2"
+              className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 text-white font-semibold text-xs backdrop-blur-md transition-all flex items-center justify-center gap-2 min-h-[44px]"
             >
               <Users className="w-4 h-4" />
               <span>Add Customer</span>
@@ -351,12 +367,7 @@ export default function DashboardPage({
           </div>
 
           <div className="space-y-4">
-            {[
-              { text: 'Added 2.5 Kg Morning milk entry for Ramesh Kumar', time: '15 mins ago', type: 'milk' },
-              { text: 'Payment of ₹1,000 recorded via UPI QR', time: '1 hour ago', type: 'payment' },
-              { text: 'New customer "Suresh Verma" registered', time: '3 hours ago', type: 'user' },
-              { text: 'Cloud data backup auto-completed', time: '5 hours ago', type: 'system' }
-            ].map((act, i) => (
+            {dynamicActivity.map((act, i) => (
               <div key={i} className="flex items-start gap-3 text-xs">
                 <div className="w-2 h-2 rounded-full bg-sky-500 mt-1.5" />
                 <div className="flex-1">
