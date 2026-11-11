@@ -34,7 +34,6 @@ export function MainAppContent() {
   // Navigation & View State
   const [currentView, setCurrentView] = useState('dashboard'); // 'dashboard' | 'customers' | 'records' | 'payments' | 'analytics' | 'settings' | 'admin' | 'login'
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   // Authentication & User State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -83,15 +82,9 @@ export function MainAppContent() {
 
   // Initial Theme & Authentication Check
   useEffect(() => {
-    // Check Theme
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      setIsDarkMode(true);
-      document.documentElement.setAttribute('data-theme', 'dark');
-    } else {
-      setIsDarkMode(false);
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
+    // Keep the application in light mode; the theme toggle has been removed.
+    localStorage.setItem('theme', 'light');
+    document.documentElement.setAttribute('data-theme', 'light');
 
     // Check Auth
     const token = localStorage.getItem('authToken');
@@ -139,15 +132,6 @@ export function MainAppContent() {
     });
     return () => { axios.interceptors.request.eject(interceptor); axios.interceptors.response.eject(responseInterceptor); };
   }, []);
-
-  // Sync Theme
-  const handleToggleDarkMode = () => {
-    const nextMode = !isDarkMode;
-    setIsDarkMode(nextMode);
-    const themeStr = nextMode ? 'dark' : 'light';
-    localStorage.setItem('theme', themeStr);
-    document.documentElement.setAttribute('data-theme', themeStr);
-  };
 
   // Fetch Dashboard Stats & Customer Records
   const refreshData = useCallback(async () => {
@@ -376,8 +360,6 @@ export function MainAppContent() {
         onNavigate={setCurrentView}
         user={user}
         userRole={userRole}
-        isDarkMode={isDarkMode}
-        onToggleDarkMode={handleToggleDarkMode}
         onOpenNotifications={() => setShowNotifications(true)}
         onOpenSettings={() => setCurrentView('settings')}
         onLogout={handleLogout}
@@ -426,10 +408,13 @@ export function MainAppContent() {
                 setCurrentView('records');
               }}
               onShareCustomer={(u, n, whatsapp) => {
-                const phone = whatsapp || '';
-                const text = encodeURIComponent(`Hello ${n}, view your latest milk record details on Milk Record SaaS!`);
-                const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
-                window.open(url, '_blank');
+                const phone = String(whatsapp || '').replace(/\\D/g, '');
+                const customerPortalUrl = new URL('/?portal=customer', window.location.origin).toString();
+                const message = `Hello ${n}, your milk records are available online.\\n\\nOpen your personal customer portal: ${customerPortalUrl}\\n\\nLogin using the mobile number registered with your milk supplier.`;
+                const shareUrl = phone
+                  ? `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`
+                  : `https://wa.me/?text=${encodeURIComponent(message)}`;
+                window.open(shareUrl, '_blank', 'noopener,noreferrer');
               }}
               onMarkPayment={(cust) => {
                 const due = Math.max(0, Number(cust.totalAmount || 0) - Number(cust.paidAmount || 0));
