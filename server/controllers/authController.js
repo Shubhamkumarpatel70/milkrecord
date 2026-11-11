@@ -49,7 +49,7 @@ exports.login = async (req, res) => {
 
 exports.customerLogin = async (req, res) => {
   try {
-    const mobile = String(req.body.mobile || '').replace(/\\D/g, '');
+    const mobile = String(req.body.mobile || '').replace(/\D/g, '');
     if (!validMobile(mobile)) return res.status(400).json({ message: 'Enter a valid 10-digit mobile number.' });
 
     // Mobile-only access is intentionally limited to one unambiguous customer record.
