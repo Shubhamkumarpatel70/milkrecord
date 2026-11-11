@@ -6,7 +6,13 @@ const Customer = require('../models/Customer');
 const MilkRecord = require('../models/MilkRecord');
 
 async function run() {
-  const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/milk-record';
+  const mongoUri = process.env.MONGODB_URI;
+  if (!mongoUri) {
+    throw new Error('MONGODB_URI must point to the intended database. Refusing to use a local/default database.');
+  }
+  if (process.env.CONFIRM_CUSTOMER_LINK_MIGRATION !== 'yes') {
+    throw new Error('Set CONFIRM_CUSTOMER_LINK_MIGRATION=yes only after taking and verifying a database backup.');
+  }
   await mongoose.connect(mongoUri);
 
   const pending = await MilkRecord.find({ customerId: { $exists: false } }).select('_id customer user');

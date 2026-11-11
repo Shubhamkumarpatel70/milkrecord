@@ -11,7 +11,7 @@ New milk entries are saved with a stable `customerId`. Older records may still h
 
 ```bash
 npm ci
-npm run migrate:customer-links
+CONFIRM_CUSTOMER_LINK_MIGRATION=yes npm run migrate:customer-links
 ```
 
 The script is safe to re-run. It links a record only when exactly one customer matches both the record owner and customer name. Ambiguous names and missing customers are skipped and reported. It does not delete records or change quantities, amounts, or payment status.
