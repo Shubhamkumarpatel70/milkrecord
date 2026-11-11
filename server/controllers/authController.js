@@ -55,9 +55,9 @@ exports.customerLogin = async (req, res) => {
 
 exports.addPaymentOption = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.authUser._id;
     const upiId = String(req.body.upiId || '').trim();
-    if (!userId || !/^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/.test(upiId)) return res.status(400).json({ message: 'Enter a valid UPI ID and user ID.' });
+    if (!/^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/.test(upiId)) return res.status(400).json({ message: 'Enter a valid UPI ID.' });
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     user.paymentOptions.upiId = upiId;
@@ -80,9 +80,9 @@ exports.getPaymentOption = async (req, res) => {
 
 exports.generatePaymentQR = async (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.authUser._id;
     const amount = Number(req.body.amount);
-    if (!userId || !Number.isFinite(amount) || amount <= 0 || amount > 10000000) return res.status(400).json({ message: 'Enter a valid payment amount.' });
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 10000000) return res.status(400).json({ message: 'Enter a valid payment amount.' });
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (!user.paymentOptions?.hasPaymentOption || !user.paymentOptions?.upiId) return res.status(400).json({ message: 'Payment option not configured.' });
