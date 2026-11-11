@@ -57,6 +57,8 @@ export function MainAppContent() {
   const [showPaymentQRModal, setShowPaymentQRModal] = useState(false);
   const [showPaymentSettleModal, setShowPaymentSettleModal] = useState(null);
   const [settlementAmount, setSettlementAmount] = useState('');
+  const [settlementDate, setSettlementDate] = useState(indiaDateKey());
+  const [settlementRemark, setSettlementRemark] = useState('');
 
   // Data States
   const [loading, setLoading] = useState(true);
@@ -776,8 +778,33 @@ export function MainAppContent() {
                 required
               />
             </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Payment Date</label>
+                <input
+                  type="date"
+                  max={indiaDateKey()}
+                  value={settlementDate}
+                  onChange={e => setSettlementDate(e.target.value)}
+                  className="input-field"
+                  required
+                />
+                <p className="text-[10px] text-slate-400 mt-1">Displayed as DD-MM-YYYY in history</p>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Remark (Optional)</label>
+                <input
+                  type="text"
+                  maxLength={500}
+                  value={settlementRemark}
+                  onChange={e => setSettlementRemark(e.target.value)}
+                  className="input-field"
+                  placeholder="e.g. Partial payment / Cash"
+                />
+              </div>
+            </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => { setShowPaymentSettleModal(null); setSettlementAmount(''); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
+              <button onClick={() => { setShowPaymentSettleModal(null); setSettlementAmount(''); setSettlementDate(indiaDateKey()); setSettlementRemark(''); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
               <button
                 onClick={async () => {
                   const amountToRecord = Math.round(Number(settlementAmount) * 100) / 100;
@@ -790,7 +817,9 @@ export function MainAppContent() {
                     await axios.post('/api/milk-records/payment', {
                       customerId: showPaymentSettleModal._id,
                       amount: amountToRecord,
-                      month: showPaymentSettleModal.month
+                      month: showPaymentSettleModal.month,
+                      paymentDate: settlementDate,
+                      remark: settlementRemark
                     });
                   } catch (err) {
                     alert(err.response?.data?.message || 'Payment could not be recorded. Please try again.');
@@ -798,6 +827,8 @@ export function MainAppContent() {
                   }
                   setShowPaymentSettleModal(null);
                   setSettlementAmount('');
+                  setSettlementDate(indiaDateKey());
+                  setSettlementRemark('');
                   await refreshData();
                   alert(`Payment of ₹${amountToRecord.toFixed(2)} recorded for ${showPaymentSettleModal.name}.`);
                 }}
