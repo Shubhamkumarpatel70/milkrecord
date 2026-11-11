@@ -378,7 +378,6 @@ export function MainAppContent() {
         userRole={userRole}
         isDarkMode={isDarkMode}
         onToggleDarkMode={handleToggleDarkMode}
-        unreadNotifications={2}
         onOpenNotifications={() => setShowNotifications(true)}
         onOpenSettings={() => setCurrentView('settings')}
         onLogout={handleLogout}
