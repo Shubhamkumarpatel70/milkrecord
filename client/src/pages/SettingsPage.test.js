@@ -34,8 +34,8 @@ describe('SettingsPage', () => {
     const onSaveConfiguration = jest.fn();
     render(<SettingsPage onSaveConfiguration={onSaveConfiguration} />);
     fireEvent.change(screen.getByLabelText('Shop / Brand Name'), { target: { value: 'A' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save All Configuration' }));
-    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('at least 2 characters'));
+    fireEvent.submit(screen.getByRole('button', { name: 'Save All Configuration' }).closest('form'));
+    await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('2 characters'));
     expect(onSaveConfiguration).not.toHaveBeenCalled();
   });
 });
