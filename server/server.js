@@ -102,6 +102,15 @@ try {
   console.error('❌ Error loading customer routes:', error);
 }
 
+// Customer-only portal routes use a separate customer-scoped session.
+try {
+  const customerPortalRoutes = require('./routes/customerPortal');
+  app.use('/api/customer-portal', customerPortalRoutes);
+  console.log('✅ Customer portal routes loaded');
+} catch (error) {
+  console.error('❌ Error loading customer portal routes:', error);
+}
+
 // Load admin routes
 try {
   const adminRoutes = require('./routes/admin');
