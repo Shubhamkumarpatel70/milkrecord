@@ -22,7 +22,7 @@ export default function Sidebar({ currentView, onNavigate, isOpen, onClose, onSt
   return (
     <>
       {isOpen && <button type="button" aria-label="Close navigation" onClick={onClose} className="fixed inset-0 z-40 bg-slate-950/40 backdrop-blur-[2px] lg:hidden" />}
-      <aside className={`fixed bottom-0 left-0 top-[60px] z-40 flex w-[268px] flex-col border-r border-slate-200 bg-white transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`fixed bottom-0 left-0 top-[60px] z-40 flex w-64 flex-col border-r border-slate-200 bg-white transition-transform duration-300 dark:border-slate-800 dark:bg-slate-950 ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800 lg:hidden">
           <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Menu</span>
           <button type="button" onClick={onClose} aria-label="Close menu" className="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"><X className="h-5 w-5" /></button>
