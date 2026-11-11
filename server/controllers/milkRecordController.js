@@ -5,10 +5,10 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, whatsapp, createdAt, shift = 'morning' } = req.body;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, whatsapp, createdAt, shift = 'morning' } = req.body;
     const ownerId = req.authUser._id;
     const quantity = Number(quantityKg), totalAmount = Number(amount);
-    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift)) {
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit)) {
       return res.status(400).json({ message: 'Enter a customer, valid user, positive quantity and non-negative amount.' });
     }
     const entryDate = createdAt ? new Date(createdAt) : new Date();
@@ -22,7 +22,7 @@ exports.createMilkRecord = async (req, res) => {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
+    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, quantityUnit, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {
@@ -34,14 +34,14 @@ exports.createMilkRecord = async (req, res) => {
 exports.updateMilkRecord = async (req, res) => {
   try {
     const ownerId = req.authUser._id;
-    const { customer, quantityKg, amount, shift, createdAt } = req.body;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, shift, createdAt } = req.body;
     const quantity = Number(quantityKg);
     const totalAmount = Number(amount);
     const entryDate = new Date(createdAt);
 
     if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 ||
         !Number.isFinite(totalAmount) || totalAmount < 0 ||
-        !['morning', 'evening'].includes(shift) || Number.isNaN(entryDate.getTime()) ||
+        !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit) || Number.isNaN(entryDate.getTime()) ||
         entryDate > new Date(Date.now() + 5 * 60 * 1000)) {
       return res.status(400).json({ message: 'Enter valid customer, quantity, amount, shift and date.' });
     }
@@ -61,6 +61,7 @@ exports.updateMilkRecord = async (req, res) => {
     record.customerId = customerDoc._id;
     record.whatsapp = customerDoc.whatsapp;
     record.quantityKg = quantity;
+    record.quantityUnit = quantityUnit;
     record.amount = totalAmount;
     record.shift = shift;
     record.createdAt = entryDate;
