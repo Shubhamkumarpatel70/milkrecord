@@ -48,3 +48,6 @@ jobs:
       - name: Check backend JavaScript syntax
         run: |
           find server -name '*.js' -not -path 'server/node_modules/*' -print0 | xargs -0 -n1 node --check
+      - name: Run backend tests
+        working-directory: server
+        run: npm test
