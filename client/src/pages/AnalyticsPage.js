@@ -23,8 +23,54 @@ export default function AnalyticsPage({
   totalRevenue = 0,
   totalCustomers = 0,
   customers = [],
-  records = []
+  records = [],
+  selectedMonth = '',
+  onMonthChange
 }) {
+  const monthKey = selectedMonth || new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit'
+  }).format(new Date());
+
+  const monthlyRecords = useMemo(() => (Array.isArray(records) ? records : []).filter(record => {
+    const date = new Date(record.createdAt || record.date);
+    if (Number.isNaN(date.getTime())) return false;
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit'
+    }).formatToParts(date);
+    const key = `${parts.find(part => part.type === 'year')?.value}-${parts.find(part => part.type === 'month')?.value}`;
+    return key === monthKey;
+  }), [records, monthKey]);
+
+  const monthlySummary = useMemo(() => {
+    const groups = new Map();
+    monthlyRecords.forEach((record, index) => {
+      const key = record.customerId || record.customer || `record-${index}`;
+      const item = groups.get(key) || {
+        key, name: record.customer || record.customerName || 'Customer',
+        kg: 0, liter: 0, amount: 0
+      };
+      const quantity = Number(record.quantityKg || record.quantity || 0);
+      if (record.quantityUnit === 'liter') item.liter += quantity;
+      else item.kg += quantity;
+      item.amount += Number(record.amount || 0);
+      groups.set(key, item);
+    });
+    const kg = monthlyRecords.filter(record => record.quantityUnit !== 'liter')
+      .reduce((sum, record) => sum + Number(record.quantityKg || record.quantity || 0), 0);
+    const liter = monthlyRecords.filter(record => record.quantityUnit === 'liter')
+      .reduce((sum, record) => sum + Number(record.quantityKg || record.quantity || 0), 0);
+    return {
+      kg, liter,
+      earnings: monthlyRecords.reduce((sum, record) => sum + Number(record.amount || 0), 0),
+      customers: Array.from(groups.values()).sort((x, y) => y.amount - x.amount)
+    };
+  }, [monthlyRecords]);
+
+  const money = value => `₹${Number(value || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  const monthTitle = new Date(`${monthKey}-15T12:00:00+05:30`).toLocaleDateString('en-IN', {
+    month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  });
+
   const dailyData = useMemo(() => {
     const grouped = new Map();
     records.forEach((record) => {
@@ -32,7 +78,7 @@ export default function AnalyticsPage({
       if (!dateValue) return;
       const date = new Date(dateValue);
       if (Number.isNaN(date.getTime())) return;
-      const key = date.toISOString().slice(0, 10);
+      const key = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
       const current = grouped.get(key) || {
         date: key,
         label: formatDate(date),
@@ -47,15 +93,12 @@ export default function AnalyticsPage({
   }, [records]);
 
   const handleExportExcel = () => {
-    const rows = customers.map((customer) => ({
+    const rows = monthlySummary.customers.map((customer) => ({
       'Customer Name': customer.name || '',
-      'WhatsApp Phone': customer.whatsapp || '',
-      'Report Month': customer.month || '',
-      'Recorded Days': Number(customer.totalDays || 0),
-      'Total Amount (INR)': Number(customer.totalAmount || 0),
-      'Paid Amount (INR)': Number(customer.paidAmount || 0),
-      'Remaining Balance (INR)': Math.max(0, Number(customer.totalAmount || 0) - Number(customer.paidAmount || 0)),
-      'Payment Status': customer.status || 'unpaid'
+      'Report Month': monthKey,
+      'Milk Quantity (Kg)': Number(customer.kg.toFixed(2)),
+      'Milk Quantity (Liter)': Number(customer.liter.toFixed(2)),
+      'Total Amount (INR)': Number(customer.amount.toFixed(2))
     }));
 
     if (!rows.length) {
@@ -66,7 +109,7 @@ export default function AnalyticsPage({
     const worksheet = XLSX.utils.json_to_sheet(rows);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Customer Report');
-    XLSX.writeFile(workbook, `Milk_Record_Report_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.writeFile(workbook, `Milk_Record_Report_${monthKey}.xlsx`);
   };
 
   return (
@@ -90,6 +133,21 @@ export default function AnalyticsPage({
           </button>
         </div>
       </div>
+
+      <section className="rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-4 sm:p-6 shadow-soft">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div><h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Monthly Sales Report</h2><p className="mt-1 text-xs text-slate-500">Sales summary for {monthTitle}</p></div>
+          <label className="w-full sm:w-56"><span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Select month</span><input type="month" value={monthKey} onChange={event => onMonthChange && onMonthChange(event.target.value)} className="w-full min-h-11 rounded-xl border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-900 px-3 text-sm font-semibold text-slate-800 dark:text-slate-100" /></label>
+        </div>
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="rounded-2xl bg-sky-50 dark:bg-sky-950/40 p-4"><p className="text-xs font-semibold text-sky-700 dark:text-sky-300">Total Milk Sold</p><p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">{monthlySummary.kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Kg</p><p className="text-sm text-slate-600 dark:text-slate-300">{monthlySummary.liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })} Liter</p></div>
+          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 p-4"><p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">Total Earnings</p><p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">{money(monthlySummary.earnings)}</p><p className="text-xs text-slate-500">{monthlyRecords.length} saved entries</p></div>
+          <div className="rounded-2xl bg-violet-50 dark:bg-violet-950/40 p-4"><p className="text-xs font-semibold text-violet-700 dark:text-violet-300">Customers Served</p><p className="mt-2 text-xl font-extrabold text-slate-900 dark:text-white">{monthlySummary.customers.length}</p><p className="text-xs text-slate-500">Customers with milk entries</p></div>
+        </div>
+        <div className="mt-5"><h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">Customer-wise Monthly Details</h3>
+          {monthlySummary.customers.length ? <div className="mt-3 overflow-x-auto"><table className="w-full min-w-[520px] text-left text-xs"><thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 uppercase"><tr><th className="p-3">Customer</th><th className="p-3 text-right">Milk (Kg)</th><th className="p-3 text-right">Milk (Liter)</th><th className="p-3 text-right">Amount</th></tr></thead><tbody className="divide-y divide-slate-100 dark:divide-slate-700">{monthlySummary.customers.map(customer => <tr key={customer.key}><td className="p-3 font-semibold text-slate-800 dark:text-slate-100">{customer.name}</td><td className="p-3 text-right">{customer.kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="p-3 text-right">{customer.liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })}</td><td className="p-3 text-right font-bold">{money(customer.amount)}</td></tr>)}</tbody></table></div> : <p className="py-8 text-center text-sm text-slate-500">No milk sales recorded for this month.</p>}
+        </div>
+      </section>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-6">
         <div className="p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft">
