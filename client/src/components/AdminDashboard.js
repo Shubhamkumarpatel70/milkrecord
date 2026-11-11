@@ -1,587 +1,72 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
+import { Activity, Users, Milk, IndianRupee, RefreshCw, Search, ShieldCheck, Store, Pencil, Power, Trash2, LogOut, X, Download, CalendarDays } from 'lucide-react';
 
-function AdminDashboard({ onLogout, onOpenSettings }) {
-  const [activeTab, setActiveTab] = useState('overview');
-  const [users, setUsers] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [milkRecords, setMilkRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalCustomers: 0,
-    totalTransactions: 0,
-    totalAmount: 0,
-    totalMilkQuantity: 0
-  });
-
-  // Modal states
-  const [showEditUserModal, setShowEditUserModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', mobile: '', mpin: '', upiId: '', isActive: true });
-  const [message, setMessage] = useState('');
-
-  // Fetch all data on component mount
-  useEffect(() => {
-    fetchAllData();
-  }, []);
-
-  const fetchAllData = async () => {
-    setLoading(true);
-    try {
-      // Fetch users
-      const usersRes = await axios.get('/api/admin/users');
-      setUsers(usersRes.data);
-
-      // Fetch customers
-      const customersRes = await axios.get('/api/admin/customers');
-      setCustomers(customersRes.data);
-
-      // Fetch milk records
-      const recordsRes = await axios.get('/api/admin/milk-records');
-      setMilkRecords(recordsRes.data);
-
-      // Calculate stats
-      const totalAmount = recordsRes.data.reduce((sum, record) => sum + (record.amount || 0), 0);
-      const totalMilkQuantity = recordsRes.data.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
-
-      setStats({
-        totalUsers: usersRes.data.length,
-        totalCustomers: customersRes.data.length,
-        totalTransactions: recordsRes.data.length,
-        totalAmount: totalAmount,
-        totalMilkQuantity: totalMilkQuantity
-      });
-    } catch (error) {
-      console.error('Error fetching admin data:', error);
-      setMessage('Failed to fetch data. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEditUser = (user) => {
-    setSelectedUser(user);
-    setEditForm({
-      name: user.name,
-      mobile: user.mobile,
-      mpin: '',
-      upiId: user.paymentOptions?.upiId || '',
-      isActive: user.isActive !== false
-    });
-    setShowEditUserModal(true);
-  };
-
-  const handleUpdateUser = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(`/api/admin/users/${selectedUser._id}`, editForm);
-      setMessage('User updated successfully!');
-      setShowEditUserModal(false);
-      fetchAllData(); // Refresh data
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Failed to update user.');
-    }
-  };
-
-  const handleToggleUserStatus = async (userId, currentStatus) => {
-    try {
-      await axios.patch(`/api/admin/users/${userId}/toggle-status`, {
-        isActive: !currentStatus
-      });
-      setMessage(`User ${currentStatus ? 'disabled' : 'enabled'} successfully!`);
-      fetchAllData(); // Refresh data
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Failed to toggle user status.');
-    }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      try {
-        await axios.delete(`/api/admin/users/${userId}`);
-        setMessage('User deleted successfully!');
-        fetchAllData(); // Refresh data
-      } catch (error) {
-        setMessage(error.response?.data?.message || 'Failed to delete user.');
-      }
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-100">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading admin dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 mb-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-purple-800 dark:text-purple-400">Admin Dashboard</h1>
-              <p className="text-gray-600 dark:text-gray-400">Manage users, customers, and transactions</p>
-            </div>
-            <div className="flex items-center space-x-3">
-              {/* Settings Button */}
-              <button 
-                onClick={onOpenSettings}
-                className="p-2 rounded-lg transition-colors hover:bg-gray-200 dark:hover:bg-gray-700"
-                title="Settings"
-              >
-                <svg 
-                  className="w-6 h-6 text-gray-600 dark:text-gray-300" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" 
-                  />
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" 
-                  />
-                </svg>
-              </button>
-              <button 
-                onClick={onLogout}
-                className="bg-red-500 hover:bg-red-600 text-white px-6 py-2 rounded-lg font-semibold transition"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-6">
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-blue-100 text-blue-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-green-100 text-green-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m9-4V7a4 4 0 10-8 0v3m12 0a4 4 0 01-8 0m8 0v3a4 4 0 01-8 0V7m8 0a4 4 0 00-8 0" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Customers</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalCustomers}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-purple-100 text-purple-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Transactions</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalTransactions}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-red-100 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Total Amount</p>
-                <p className="text-2xl font-bold text-gray-900">₹{stats.totalAmount.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-lg">
-            <div className="flex items-center">
-              <div className="p-3 rounded-full bg-red-100 text-red-600">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Milk Quantity</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalMilkQuantity.toFixed(2)} kg</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab('overview')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'overview'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Overview
-              </button>
-              <button
-                onClick={() => setActiveTab('users')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'users'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Manage Users
-              </button>
-              <button
-                onClick={() => setActiveTab('customers')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'customers'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                All Customers
-              </button>
-              <button
-                onClick={() => setActiveTab('transactions')}
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === 'transactions'
-                    ? 'border-purple-500 text-purple-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                All Transactions
-              </button>
-            </nav>
-          </div>
-
-          {/* Tab Content */}
-          <div className="mt-6">
-            {activeTab === 'overview' && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-gray-800">System Overview</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Recent Users</h4>
-                    <div className="space-y-3">
-                      {users.slice(0, 5).map(user => (
-                        <div key={user._id} className="flex justify-between items-center p-3 bg-white rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-800">{user.name}</p>
-                            <p className="text-sm text-gray-600">{user.mobile}</p>
-                          </div>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                          }`}>
-                            {user.isActive !== false ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h4 className="text-lg font-semibold text-gray-800 mb-4">Recent Transactions</h4>
-                    <div className="space-y-3">
-                      {milkRecords.slice(0, 5).map(record => (
-                        <div key={record._id} className="flex justify-between items-center p-3 bg-white rounded-lg">
-                          <div>
-                            <p className="font-medium text-gray-800">{record.customer}</p>
-                            <p className="text-sm text-gray-600">{new Date(record.createdAt).toLocaleDateString()}</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-800">₹{record.amount}</p>
-                            <p className="text-sm text-gray-600">{record.quantityKg} kg</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'users' && (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-bold text-gray-800">Manage Users</h3>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">UPI ID</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map(user => (
-                        <tr key={user._id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                                  <span className="text-sm font-medium text-purple-600">{user.name.charAt(0).toUpperCase()}</span>
-                                </div>
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                                <div className="text-sm text-gray-500">{user.role || 'user'}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{user.mobile}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {user.paymentOptions?.upiId || 'Not set'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                              user.isActive !== false ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                            }`}>
-                              {user.isActive !== false ? 'Active' : 'Inactive'}
-                            </span>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                            <button
-                              onClick={() => handleEditUser(user)}
-                              className="text-indigo-600 hover:text-indigo-900"
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleToggleUserStatus(user._id, user.isActive !== false)}
-                              className={`${
-                                user.isActive !== false ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'
-                              }`}
-                            >
-                              {user.isActive !== false ? 'Disable' : 'Enable'}
-                            </button>
-                            <button
-                              onClick={() => handleDeleteUser(user._id)}
-                              className="text-red-600 hover:text-red-900"
-                            >
-                              Delete
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'customers' && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-gray-800">All Customers</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">WhatsApp</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Owner</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {customers.map(customer => (
-                        <tr key={customer._id}>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex items-center">
-                              <div className="flex-shrink-0 h-10 w-10">
-                                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                                  <span className="text-sm font-medium text-green-600">{customer.name.charAt(0).toUpperCase()}</span>
-                                </div>
-                              </div>
-                              <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{customer.whatsapp}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {customer.user?.name || 'Unknown'}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(customer.createdAt).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'transactions' && (
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-gray-800">All Transactions</h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {milkRecords.map(record => (
-                        <tr key={record._id}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{record.customer}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{record.quantityKg} kg</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">₹{record.amount}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {new Date(record.createdAt).toLocaleDateString()}
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                            {record.user?.name || 'Unknown'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Message Display */}
-        {message && (
-          <div className="fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50">
-            {message}
-            <button 
-              onClick={() => setMessage('')}
-              className="ml-4 text-green-700 hover:text-green-900"
-            >
-              ×
-            </button>
-          </div>
-        )}
-
-        {/* Edit User Modal */}
-        {showEditUserModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl p-4 sm:p-8 w-full max-w-full sm:max-w-md mx-2 sm:mx-4 shadow-2xl max-h-[90vh] overflow-auto">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">Edit User</h2>
-                <button onClick={() => setShowEditUserModal(false)} className="text-gray-500 hover:text-gray-700 text-xl">
-                  ×
-                </button>
-              </div>
-              <form onSubmit={handleUpdateUser} className="space-y-6">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">Name</label>
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({...editForm, name: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">Mobile</label>
-                  <input
-                    type="tel"
-                    value={editForm.mobile}
-                    onChange={(e) => setEditForm({...editForm, mobile: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                    pattern="[0-9]{10}"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">MPIN</label>
-                  <div className="relative flex max-w-xs gap-2" onClick={e => e.currentTarget.querySelector('input')?.focus()}>
-                    {Array.from({length:5}, (_, index) => <div key={index} className="flex h-12 w-11 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 text-xl font-bold">{editForm.mpin[index] ? '•' : '·'}</div>)}
-                    <input aria-label="New 5-digit MPIN" type="password" inputMode="numeric" maxLength="5" value={editForm.mpin} onChange={e => setEditForm({...editForm, mpin: e.target.value.replace(/[^0-9]/g, '').slice(0,5)})} className="absolute inset-0 h-full w-full opacity-0" />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Leave blank to keep the existing MPIN. Enter 5 digits to reset it.</p>
-                </div>
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">UPI ID</label>
-                  <input
-                    type="text"
-                    value={editForm.upiId}
-                    onChange={(e) => setEditForm({...editForm, upiId: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                    placeholder="username@bank"
-                  />
-                </div>
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="isActive"
-                    checked={editForm.isActive}
-                    onChange={(e) => setEditForm({...editForm, isActive: e.target.checked})}
-                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-300 rounded"
-                  />
-                  <label htmlFor="isActive" className="ml-2 block text-sm text-gray-900">
-                    User is active
-                  </label>
-                </div>
-                <div className="flex gap-4 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowEditUserModal(false)}
-                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-6 py-3 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-colors"
-                  >
-                    Update User
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+const money = value => '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const date = value => value ? new Date(value).toLocaleDateString('en-IN') : '—';
+const downloadCsv = (filename, rows) => {
+  const csv = rows.map(row => row.map(value => '"' + String(value ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob); const link = document.createElement('a');
+  link.href = url; link.download = filename; link.click(); URL.revokeObjectURL(url);
+};
+function Stat({ icon: Icon, label, value, note }) {
+  return <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex items-center justify-between"><span className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</span><span className="rounded-xl bg-indigo-50 p-2 text-indigo-700"><Icon className="h-5 w-5"/></span></div><p className="mt-3 text-2xl font-extrabold tracking-tight text-slate-900">{value}</p>{note&&<p className="mt-1 text-xs text-slate-500">{note}</p>}</div>;
 }
+export default function AdminDashboard({ onLogout }) {
+  const [tab,setTab]=useState('overview'), [users,setUsers]=useState([]), [customers,setCustomers]=useState([]), [records,setRecords]=useState([]);
+  const [stats,setStats]=useState(null), [period,setPeriod]=useState('all'), [periodStats,setPeriodStats]=useState(null);
+  const [loading,setLoading]=useState(true), [busy,setBusy]=useState(false), [error,setError]=useState(''), [notice,setNotice]=useState('');
+  const [query,setQuery]=useState(''), [status,setStatus]=useState('all'), [editing,setEditing]=useState(null);
+  const [form,setForm]=useState({name:'',mobile:'',mpin:'',upiId:'',isActive:true,shopName:'',milkRate:'50',quantityUnit:'kg'});
 
-export default AdminDashboard; 
+  const load=useCallback(async()=>{
+    setLoading(true); setError('');
+    try {
+      const [u,c,r,s,p]=await Promise.all([
+        axios.get('/api/admin/users'), axios.get('/api/admin/customers'), axios.get('/api/admin/milk-records'),
+        axios.get('/api/admin/stats/system'), axios.get('/api/admin/stats/transactions',{params:{period}})
+      ]);
+      setUsers(Array.isArray(u.data)?u.data:[]); setCustomers(Array.isArray(c.data)?c.data:[]);
+      setRecords(Array.isArray(r.data)?r.data:[]); setStats(s.data); setPeriodStats(p.data);
+    } catch(err) { setError(err.response?.data?.message || 'Admin data load nahi hua. Connection aur admin permission check karein.'); }
+    finally { setLoading(false); }
+  },[period]);
+  useEffect(()=>{load();},[load]);
+
+  const filteredUsers=useMemo(()=>users.filter(u=>(status==='all'||(status==='active'?u.isActive!==false:u.isActive===false)) && [u.name,u.mobile,u.businessProfile?.shopName].join(' ').toLowerCase().includes(query.toLowerCase())),[users,status,query]);
+  const filteredCustomers=useMemo(()=>customers.filter(c=>[c.name,c.whatsapp,c.user?.name].join(' ').toLowerCase().includes(query.toLowerCase())),[customers,query]);
+  const filteredRecords=useMemo(()=>records.filter(r=>[r.customer,r.user?.name,r.shift].join(' ').toLowerCase().includes(query.toLowerCase())),[records,query]);
+  const quantities=useMemo(()=>records.reduce((acc,r)=>{const unit=r.quantityUnit==='liter'?'liter':'kg';acc[unit]+=Number(r.quantityKg||0);return acc;},{kg:0,liter:0}),[records]);
+
+  const openEdit=user=>{setEditing(user);setForm({name:user.name||'',mobile:user.mobile||'',mpin:'',upiId:user.paymentOptions?.upiId||'',isActive:user.isActive!==false,shopName:user.businessProfile?.shopName||'',milkRate:String(user.businessProfile?.milkRate??50),quantityUnit:user.businessProfile?.quantityUnit||'kg'});};
+  const save=async e=>{e.preventDefault();if(form.mpin&&!/^\d{5}$/.test(form.mpin))return setError('MPIN exactly 5 digits ka hona chahiye.');setBusy(true);setError('');try{await axios.put('/api/admin/users/'+editing._id,form);setNotice('Dairy owner details updated.');setEditing(null);await load();}catch(err){setError(err.response?.data?.message||'Update failed.');}finally{setBusy(false);}};
+  const toggle=async user=>{if(!window.confirm(user.isActive===false?'Is account ko activate karein?':'Is account ko deactivate karein?'))return;setBusy(true);try{await axios.patch('/api/admin/users/'+user._id+'/toggle-status',{isActive:user.isActive===false});setNotice('Account status updated.');await load();}catch(err){setError(err.response?.data?.message||'Status update failed.');}finally{setBusy(false);}};
+  const remove=async user=>{if(user.role==='admin')return;if(!window.confirm(user.name+' ko delete karna hai? Linked records hone par server deletion block karega.'))return;setBusy(true);try{await axios.delete('/api/admin/users/'+user._id);setNotice('Account deleted.');await load();}catch(err){setError(err.response?.data?.message||'Account delete nahi hua.');}finally{setBusy(false);}};
+  const exportData=()=>{if(tab==='owners')downloadCsv('milk-record-dairy-owners.csv',[['Owner','Shop','Mobile','Role','Rate','Unit','Status','UPI'],...filteredUsers.map(u=>[u.name,u.businessProfile?.shopName,u.mobile,u.role,u.businessProfile?.milkRate,u.businessProfile?.quantityUnit,u.isActive===false?'Inactive':'Active',u.paymentOptions?.upiId])]);else if(tab==='customers')downloadCsv('milk-record-customers.csv',[['Customer','WhatsApp','Dairy owner','Created'],...filteredCustomers.map(c=>[c.name,c.whatsapp,c.user?.name,date(c.createdAt)])]);else downloadCsv('milk-record-milk-entries.csv',[['Customer','Quantity','Unit','Amount','Shift','Date','Dairy owner'],...filteredRecords.map(r=>[r.customer,r.quantityKg,r.quantityUnit||'kg',r.amount,r.shift,date(r.createdAt),r.user?.name])]);};
+
+  const tabs=[['overview','Overview'],['owners','Dairy owners'],['customers','Customers'],['records','Milk records']];
+  return <div className="min-h-screen bg-slate-50 p-3 sm:p-6"><div className="mx-auto max-w-7xl space-y-5">
+    <header className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6"><div><div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-indigo-700"><ShieldCheck className="h-4 w-4"/> Platform control</div><h1 className="mt-1 text-2xl font-extrabold text-slate-900 sm:text-3xl">Admin Dashboard</h1><p className="mt-1 text-sm text-slate-500">Manage dairy owners, customer records and platform activity</p></div><div className="flex gap-2"><button onClick={load} disabled={loading||busy} className="flex min-h-10 items-center gap-2 rounded-xl border border-slate-300 px-3 text-sm font-semibold text-slate-700 disabled:opacity-50"><RefreshCw className={'h-4 w-4 '+(loading?'animate-spin':'')}/>Refresh</button><button onClick={onLogout} className="flex min-h-10 items-center gap-2 rounded-xl bg-rose-600 px-4 text-sm font-semibold text-white"><LogOut className="h-4 w-4"/>Logout</button></div></header>
+    {error&&<div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}<button onClick={()=>setError('')} className="float-right font-bold">×</button></div>}
+    {notice&&<div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">{notice}<button onClick={()=>setNotice('')} className="float-right font-bold">×</button></div>}
+    {loading&&!stats?<div className="rounded-2xl bg-white p-12 text-center text-slate-500">Loading live platform data…</div>:<>
+      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4"><Stat icon={Store} label="Dairy owners" value={stats?.totalUsers??0} note={(stats?.activeUsers??0)+' active accounts'}/><Stat icon={Users} label="Customers" value={stats?.totalCustomers??0}/><Stat icon={Activity} label="Milk entries" value={stats?.totalRecords??0}/><Stat icon={IndianRupee} label="Recorded value" value={money(stats?.totalAmount)}/></section>
+      <section className="grid gap-3 sm:grid-cols-2"><Stat icon={Milk} label="Quantity in kg" value={quantities.kg.toLocaleString('en-IN',{maximumFractionDigits:2})+' Kg'} note="Only entries recorded in kilograms"/><Stat icon={Milk} label="Quantity in liter" value={quantities.liter.toLocaleString('en-IN',{maximumFractionDigits:2})+' L'} note="Only entries recorded in liters"/></section>
+      <nav className="flex gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-1">{tabs.map(([id,label])=><button key={id} onClick={()=>{setTab(id);setQuery('');}} className={'shrink-0 rounded-xl px-4 py-3 text-sm font-semibold '+(tab===id?'bg-indigo-600 text-white':'text-slate-600 hover:bg-slate-100')}>{label}</button>)}</nav>
+      {tab==='overview'&&<div className="grid gap-4 lg:grid-cols-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5"><div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="font-bold text-slate-900">Platform activity</h2><p className="text-xs text-slate-500">Real milk entries from the selected period</p></div><select value={period} onChange={e=>setPeriod(e.target.value)} className="rounded-xl border border-slate-300 px-3 py-2 text-sm"><option value="all">All time</option><option value="today">Today</option><option value="week">Last 7 days</option><option value="month">Last 30 days</option></select></div><div className="mt-4 grid grid-cols-2 gap-3"><Stat icon={Activity} label="Entries" value={periodStats?.totalRecords??0}/><Stat icon={IndianRupee} label="Value" value={money(periodStats?.totalAmount)}/></div></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5"><h2 className="font-bold text-slate-900">Recently joined dairy owners</h2><div className="mt-3 divide-y divide-slate-100">{users.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,7).map(u=><div key={u._id} className="flex items-center justify-between gap-3 py-3"><div className="min-w-0"><p className="truncate text-sm font-semibold text-slate-800">{u.businessProfile?.shopName||u.name}</p><p className="text-xs text-slate-500">{u.name} · {u.mobile}</p></div><span className={'rounded-full px-2.5 py-1 text-xs font-semibold '+(u.isActive===false?'bg-rose-50 text-rose-700':'bg-emerald-50 text-emerald-700')}>{u.isActive===false?'Inactive':'Active'}</span></div>)}{users.length===0&&<p className="py-5 text-sm text-slate-500">No owner accounts found.</p>}</div></section>
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 lg:col-span-2"><h2 className="font-bold text-slate-900">Latest milk activity</h2><div className="mt-3 divide-y divide-slate-100">{records.slice().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,6).map(r=><div key={r._id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><p className="text-sm font-semibold text-slate-800">{r.customer}</p><p className="text-xs text-slate-500">{r.user?.name||'Owner'} · {date(r.createdAt)} · {r.shift||'—'}</p></div><div className="text-right"><p className="text-sm font-bold text-slate-900">{money(r.amount)}</p><p className="text-xs text-slate-500">{r.quantityKg} {r.quantityUnit==='liter'?'L':'Kg'}</p></div></div>)}</div></section>
+      </div>}
+      {tab!=='overview'&&<section className="overflow-hidden rounded-2xl border border-slate-200 bg-white"><div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 p-4"><div><h2 className="font-bold text-slate-900">{tab==='owners'?'Dairy owner accounts':tab==='customers'?'All customers':'Milk records'}</h2><p className="text-xs text-slate-500">{tab==='owners'?filteredUsers.length:tab==='customers'?filteredCustomers.length:filteredRecords.length} live records</p></div><div className="flex flex-wrap gap-2"><div className="relative"><Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400"/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search…" className="min-h-10 w-44 rounded-xl border border-slate-300 pl-9 pr-3 text-sm"/></div>{tab==='owners'&&<select value={status} onChange={e=>setStatus(e.target.value)} className="rounded-xl border border-slate-300 px-3 text-sm"><option value="all">All status</option><option value="active">Active</option><option value="inactive">Inactive</option></select>}<button onClick={exportData} className="flex min-h-10 items-center gap-2 rounded-xl bg-slate-900 px-3 text-sm font-semibold text-white"><Download className="h-4 w-4"/>CSV</button></div></div>
+      <div className="overflow-x-auto"><table className="min-w-full text-left text-sm"><thead className="bg-slate-50 text-xs uppercase text-slate-500"><tr>{(tab==='owners'?['Dairy / Owner','Mobile','Milk rate','UPI','Status','Actions']:tab==='customers'?['Customer','WhatsApp','Dairy owner','Added']:['Customer','Quantity','Amount','Shift','Date','Dairy owner']).map(x=><th key={x} className="whitespace-nowrap px-4 py-3 font-semibold">{x}</th>)}</tr></thead><tbody className="divide-y divide-slate-100">
+      {tab==='owners'&&filteredUsers.map(u=><tr key={u._id} className="hover:bg-slate-50"><td className="px-4 py-3"><p className="font-semibold text-slate-900">{u.businessProfile?.shopName||u.name}</p><p className="text-xs text-slate-500">{u.name} · {u.role}</p></td><td className="px-4 py-3">{u.mobile}</td><td className="px-4 py-3">{u.businessProfile?.milkRate??'—'} / {u.businessProfile?.quantityUnit||'kg'}</td><td className="px-4 py-3">{u.paymentOptions?.upiId||'—'}</td><td className="px-4 py-3"><span className={'rounded-full px-2 py-1 text-xs '+(u.isActive===false?'bg-rose-50 text-rose-700':'bg-emerald-50 text-emerald-700')}>{u.isActive===false?'Inactive':'Active'}</span></td><td className="whitespace-nowrap px-4 py-3"><button onClick={()=>openEdit(u)} className="mr-3 font-semibold text-indigo-700"><Pencil className="inline h-3.5 w-3.5"/> Edit</button><button disabled={busy} onClick={()=>toggle(u)} className="mr-3 font-semibold text-amber-700"><Power className="inline h-3.5 w-3.5"/> {u.isActive===false?'Enable':'Disable'}</button><button disabled={busy||u.role==='admin'} onClick={()=>remove(u)} className="font-semibold text-rose-700 disabled:opacity-30"><Trash2 className="inline h-3.5 w-3.5"/> Delete</button></td></tr>)}
+      {tab==='customers'&&filteredCustomers.map(c=><tr key={c._id}><td className="px-4 py-3 font-semibold">{c.name}</td><td className="px-4 py-3">{c.whatsapp||'—'}</td><td className="px-4 py-3">{c.user?.name||'—'}</td><td className="px-4 py-3">{date(c.createdAt)}</td></tr>)}
+      {tab==='records'&&filteredRecords.map(r=><tr key={r._id}><td className="px-4 py-3 font-semibold">{r.customer}</td><td className="px-4 py-3">{r.quantityKg} {r.quantityUnit==='liter'?'L':'Kg'}</td><td className="px-4 py-3">{money(r.amount)}</td><td className="px-4 py-3 capitalize">{r.shift||'—'}</td><td className="px-4 py-3">{date(r.createdAt)}</td><td className="px-4 py-3">{r.user?.name||'—'}</td></tr>)}
+      {((tab==='owners'&&!filteredUsers.length)||(tab==='customers'&&!filteredCustomers.length)||(tab==='records'&&!filteredRecords.length))&&<tr><td colSpan="6" className="px-4 py-12 text-center text-slate-500">No matching live records.</td></tr>}
+      </tbody></table></div></section>}
+    </>}
+    {editing&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3"><form onSubmit={save} className="max-h-[92vh] w-full max-w-lg space-y-4 overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl"><div className="flex items-center justify-between"><h2 className="text-xl font-bold text-slate-900">Edit dairy owner</h2><button type="button" onClick={()=>setEditing(null)}><X className="h-5 w-5"/></button></div><div className="grid gap-3 sm:grid-cols-2"><label className="text-xs font-semibold text-slate-600">Owner name<input required minLength="2" maxLength="80" value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className="input-field mt-1 min-h-11"/></label><label className="text-xs font-semibold text-slate-600">Mobile<input required pattern="[0-9]{10}" maxLength="10" value={form.mobile} onChange={e=>setForm({...form,mobile:e.target.value.replace(/\D/g,'').slice(0,10)})} className="input-field mt-1 min-h-11"/></label><label className="text-xs font-semibold text-slate-600 sm:col-span-2">Shop / brand name<input maxLength="100" value={form.shopName} onChange={e=>setForm({...form,shopName:e.target.value})} className="input-field mt-1 min-h-11"/></label><label className="text-xs font-semibold text-slate-600">Default milk rate<input type="number" min="0" step="0.01" value={form.milkRate} onChange={e=>setForm({...form,milkRate:e.target.value})} className="input-field mt-1 min-h-11"/></label><label className="text-xs font-semibold text-slate-600">Quantity unit<select value={form.quantityUnit} onChange={e=>setForm({...form,quantityUnit:e.target.value})} className="input-field mt-1 min-h-11"><option value="kg">Kg</option><option value="liter">Liter</option></select></label><label className="text-xs font-semibold text-slate-600 sm:col-span-2">Reset MPIN (optional)<div className="relative mt-1 flex max-w-xs gap-2" onClick={e=>e.currentTarget.querySelector('input')?.focus()}>{Array.from({length:5},(_,i)=><div key={i} className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-300 bg-slate-50 text-lg">{form.mpin[i]?'•':'·'}</div>)}<input aria-label="New MPIN" type="password" inputMode="numeric" maxLength="5" value={form.mpin} onChange={e=>setForm({...form,mpin:e.target.value.replace(/\D/g,'').slice(0,5)})} className="absolute inset-0 h-full w-full opacity-0"/></div></label><label className="text-xs font-semibold text-slate-600 sm:col-span-2">UPI ID<input value={form.upiId} onChange={e=>setForm({...form,upiId:e.target.value})} className="input-field mt-1 min-h-11"/></label></div><label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" checked={form.isActive} onChange={e=>setForm({...form,isActive:e.target.checked})}/> Account active</label><p className="text-xs text-slate-400">MPIN blank chhodne par existing MPIN unchanged rahega.</p><div className="flex gap-2"><button type="button" onClick={()=>setEditing(null)} className="min-h-11 flex-1 rounded-xl bg-slate-100 font-semibold">Cancel</button><button disabled={busy} className="btn-primary min-h-11 flex-1">{busy?'Saving…':'Save changes'}</button></div></form></div>}
+  </div></div>;
+}
