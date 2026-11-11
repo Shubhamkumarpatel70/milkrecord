@@ -132,6 +132,27 @@ export default function CustomerManagementPage({
           {filteredCustomers.map((cust, idx) => {
             const pending = Math.max(0, (cust.totalAmount || 0) - (cust.paidAmount || 0));
             const isPaid = cust.status === 'paid' || pending === 0;
+            // records are already scoped to the selected month by MainAppContent.
+            // Match the customer's own entries and total each supported unit separately.
+            const customerRecords = records.filter(record => {
+              const recordName = typeof record.customer === 'object'
+                ? record.customer?.name
+                : (record.customerName || record.customer);
+              if (recordName) return String(recordName).trim().toLowerCase() === String(cust.name || '').trim().toLowerCase();
+              const recordCustomerId = String(record.customerId?._id || record.customerId || '');
+              return Boolean(cust._id && recordCustomerId === String(cust._id));
+            });
+            const milkQuantity = customerRecords.reduce((total, record) => {
+              const quantity = Number(record.quantityKg ?? record.quantity ?? 0);
+              if (!Number.isFinite(quantity)) return total;
+              if (String(record.quantityUnit || 'kg').toLowerCase() === 'liter') total.liter += quantity;
+              else total.kg += quantity;
+              return total;
+            }, { kg: 0, liter: 0 });
+            const quantityLabel = [
+              milkQuantity.kg > 0 ? `${milkQuantity.kg.toFixed(2).replace(/\\.00$/, '')} Kg` : '',
+              milkQuantity.liter > 0 ? `${milkQuantity.liter.toFixed(2).replace(/\\.00$/, '')} L` : ''
+            ].filter(Boolean).join(' + ') || '0 Kg';
 
             return (
               <div
@@ -169,6 +190,10 @@ export default function CustomerManagementPage({
                     <div>
                       <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Bill</span>
                       <span className="font-extrabold text-slate-800 dark:text-slate-200">₹{cust.totalAmount || 0}</span>
+                    </div>
+                    <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-800 pt-2 flex items-center justify-between">
+                      <span className="text-slate-400 text-[10px] font-bold uppercase">Total Milk</span>
+                      <span className="font-extrabold text-sky-600 dark:text-sky-400">{quantityLabel}</span>
                     </div>
                     <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-800 pt-2 flex justify-between">
                       <span className="text-slate-400 text-[10px] font-bold">Pending Dues</span>
