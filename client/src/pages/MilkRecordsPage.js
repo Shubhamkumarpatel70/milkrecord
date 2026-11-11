@@ -8,13 +8,24 @@ export default function MilkRecordsPage({
   onMonthChange,
   onOpenAddRecord,
   onOpenEditRecord,
-  onOpenCalendar
+  onOpenCalendar,
+  selectedCustomer = null,
+  onClearCustomerView
 }) {
   const [shiftFilter, setShiftFilter] = useState('all'); // 'all' | 'morning' | 'evening'
   const [searchTerm, setSearchTerm] = useState('');
 
+  // Restrict customer view to the selected customer's own records.
+  const customerRecords = selectedCustomer
+    ? records.filter(r => {
+        const recordCustomerId = String(r.customerId?._id || r.customerId || '');
+        if (recordCustomerId) return recordCustomerId === String(selectedCustomer._id);
+        return String(r.customerName || r.customer || '').trim().toLowerCase() === String(selectedCustomer.name || '').trim().toLowerCase();
+      })
+    : records;
+
   // Filter records based on shift & search term
-  const filteredRecords = records.filter(r => {
+  const filteredRecords = customerRecords.filter(r => {
     const custName = r.customerName || r.customer || '';
     const dateStr = r.createdAt ? r.createdAt.slice(0, 10) : (r.date || '');
     const matchesSearch = custName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -33,12 +44,13 @@ export default function MilkRecordsPage({
             <Milk className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">Daily Milk Records</h1>
-            <p className="text-xs text-slate-500">Track Morning & Evening milk collection, rates, and customer delivery logs.</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">{selectedCustomer ? `${selectedCustomer.name}'s Milk Records` : 'Daily Milk Records'}</h1>
+            <p className="text-xs text-slate-500">{selectedCustomer ? 'Date-wise milk quantity and amount for this customer.' : 'Track Morning & Evening milk collection, rates, and customer delivery logs.'}</p>
           </div>
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          {selectedCustomer && <button onClick={onClearCustomerView} className="btn-secondary text-xs px-3 py-2 min-h-[44px]">All Records</button>}
           <input
             type="month"
             value={selectedMonth}
@@ -112,6 +124,26 @@ export default function MilkRecordsPage({
           </button>
         )}
       </div>
+
+      {selectedCustomer && (
+        <section className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 p-4 sm:p-5 shadow-soft">
+          <h2 className="font-bold text-slate-800 dark:text-slate-100 mb-3">Date-wise Summary</h2>
+          {(() => {
+            const byDate = filteredRecords.reduce((map, record) => {
+              const date = record.createdAt ? record.createdAt.slice(0, 10) : (record.date || '');
+              if (!date) return map;
+              if (!map[date]) map[date] = { kg: 0, liter: 0, amount: 0, entries: 0 };
+              const quantity = Number(record.quantityKg || record.quantity || 0);
+              if (record.quantityUnit === 'liter') map[date].liter += quantity; else map[date].kg += quantity;
+              map[date].amount += Number(record.amount || 0);
+              map[date].entries += 1;
+              return map;
+            }, {});
+            const days = Object.entries(byDate).sort(([a], [b]) => b.localeCompare(a));
+            return days.length ? <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="text-slate-500 uppercase bg-slate-50 dark:bg-slate-900/50"><tr><th className="p-3">Date</th><th className="p-3">Quantity</th><th className="p-3">Entries</th><th className="p-3">Amount</th></tr></thead><tbody>{days.map(([date, day]) => <tr key={date} className="border-t border-slate-100 dark:border-slate-700"><td className="p-3 font-semibold">{date}</td><td className="p-3">{day.kg ? day.kg.toFixed(2) + ' kg' : ''}{day.kg && day.liter ? ' + ' : ''}{day.liter ? day.liter.toFixed(2) + ' L' : ''}</td><td className="p-3">{day.entries}</td><td className="p-3 font-bold text-emerald-600">₹{day.amount.toFixed(2)}</td></tr>)}</tbody></table></div> : <p className="text-sm text-slate-500">No entries found for this customer in the selected month.</p>;
+          })()}
+        </section>
+      )}
 
       {/* Main Records Content: Responsive Mobile Cards & Desktop Table */}
       {filteredRecords.length === 0 ? (
