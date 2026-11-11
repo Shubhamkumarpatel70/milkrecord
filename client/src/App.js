@@ -39,7 +39,6 @@ export function MainAppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('user');
   const [user, setUser] = useState(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Modals & Panels
   const [showNotifications, setShowNotifications] = useState(false);
@@ -104,7 +103,6 @@ export function MainAppContent() {
       localStorage.removeItem('userId');
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
-      setIsDemoMode(false);
       setUser(null);
     }
 
