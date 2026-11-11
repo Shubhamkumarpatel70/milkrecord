@@ -408,9 +408,9 @@ export function MainAppContent() {
                 setCurrentView('records');
               }}
               onShareCustomer={(u, n, whatsapp) => {
-                const phone = String(whatsapp || '').replace(/\\D/g, '');
+                const phone = String(whatsapp || '').replace(/\D/g, '');
                 const customerPortalUrl = new URL('/?portal=customer', window.location.origin).toString();
-                const message = `Hello ${n}, your milk records are available online.\\n\\nOpen your personal customer portal: ${customerPortalUrl}\\n\\nLogin using the mobile number registered with your milk supplier.`;
+                const message = `Hello ${n}, your milk records are available online.\n\nOpen your personal customer portal: ${customerPortalUrl}\n\nLogin using the mobile number registered with your milk supplier.`;
                 const shareUrl = phone
                   ? `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`
                   : `https://wa.me/?text=${encodeURIComponent(message)}`;
@@ -471,8 +471,6 @@ export function MainAppContent() {
 
           {currentView === 'settings' && (
             <SettingsPage
-              isDarkMode={isDarkMode}
-              onToggleDarkMode={handleToggleDarkMode}
               upiId={upiId}
               customers={customers}
               records={records}
