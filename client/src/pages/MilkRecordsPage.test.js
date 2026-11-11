@@ -17,7 +17,7 @@ describe('MilkRecordsPage', () => {
       />
     );
     expect(screen.getByRole('heading', { name: "Ayush's Milk Records" })).toBeInTheDocument();
-    expect(screen.getByText('Ayush')).toBeInTheDocument();
+    expect(screen.getAllByText('Ayush')).toHaveLength(2);
     expect(screen.queryByText('Rishikesh')).not.toBeInTheDocument();
     expect(screen.getByText('70.00', { exact: false })).toBeInTheDocument();
   });
