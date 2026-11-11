@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import {
   Milk, IndianRupee, AlertCircle, Users, TrendingUp, PlusCircle,
-  QrCode, ArrowUpRight, Activity, CalendarDays, ReceiptText, UserPlus
+  QrCode, ArrowUpRight, Activity, CalendarDays, UserPlus
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
