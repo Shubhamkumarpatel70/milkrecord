@@ -33,7 +33,7 @@ export default function Navbar({
   onToggleDarkMode,
   unreadNotifications = 0,
   onOpenNotifications,
-  syncStatus = 'synced',
+  syncStatus = null,
   onOpenSettings,
   onLogout,
   onToggleSidebar
