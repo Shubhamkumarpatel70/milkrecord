@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Milk, IndianRupee, AlertCircle, Users, TrendingUp, PlusCircle,
   QrCode, ArrowUpRight, Activity, CalendarDays, UserPlus
@@ -15,6 +15,23 @@ const localDateKey = (date) => {
   const d = new Date(date);
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+const indiaMonthKey = (date) => {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit'
+  }).formatToParts(new Date(date));
+  const year = parts.find(part => part.type === 'year')?.value;
+  const month = parts.find(part => part.type === 'month')?.value;
+  return year && month ? `${year}-${month}` : '';
+};
+
+const monthLabel = (key) => {
+  if (!/^\\d{4}-\\d{2}$/.test(key)) return key;
+  const [year, month] = key.split('-').map(Number);
+  return new Intl.DateTimeFormat('en-IN', {
+    month: 'long', year: 'numeric', timeZone: 'Asia/Kolkata'
+  }).format(new Date(Date.UTC(year, month - 1, 15, 12)));
 };
 
 function StatCard({ label, value, detail, icon: Icon, tone = 'sky' }) {
@@ -67,6 +84,52 @@ export default function DashboardPage({
   onOpenPaymentQR,
   onNavigate
 }) {
+  const currentIndiaMonth = indiaMonthKey(new Date());
+  const availableSalesMonths = useMemo(() => {
+    const months = new Set([currentIndiaMonth]);
+    (Array.isArray(records) ? records : []).forEach(record => {
+      const month = indiaMonthKey(record.createdAt);
+      if (month) months.add(month);
+    });
+    return Array.from(months).sort((a, b) => b.localeCompare(a));
+  }, [records, currentIndiaMonth]);
+  const [selectedSalesMonth, setSelectedSalesMonth] = useState(currentIndiaMonth);
+  const monthlySales = useMemo(() => {
+    const monthRecords = (Array.isArray(records) ? records : []).filter(record =>
+      indiaMonthKey(record.createdAt) === selectedSalesMonth
+    );
+    const groups = new Map();
+    monthRecords.forEach((record, index) => {
+      const key = record.customerId || record.customer || `unknown-${index}`;
+      const existing = groups.get(key) || {
+        key, name: record.customer || 'Customer',
+        kg: 0, liter: 0, earnings: 0
+      };
+      const quantity = Number(record.quantityKg) || 0;
+      if ((record.quantityUnit || 'kg') === 'liter') existing.liter += quantity;
+      else existing.kg += quantity;
+      existing.earnings += Number(record.amount) || 0;
+      groups.set(key, existing);
+    });
+    const kg = monthRecords.filter(record => (record.quantityUnit || 'kg') !== 'liter').reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
+    const liter = monthRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
+    const hasKg = kg > 0;
+    const hasLiter = liter > 0;
+    const customersInMonth = Array.from(groups.values()).map(customer => ({
+      ...customer,
+      quantity: hasKg && hasLiter ? customer.kg + customer.liter : (hasLiter ? customer.liter : customer.kg),
+      unitLabel: hasKg && hasLiter ? 'kg / L' : (hasLiter ? 'L' : 'kg')
+    })).sort((a, b) => b.earnings - a.earnings);
+    return {
+      totalQuantity: hasKg && hasLiter ? kg + liter : (hasLiter ? liter : kg),
+      unitLabel: hasKg && hasLiter ? 'kg / L' : (hasLiter ? 'L' : 'kg'),
+      totalEarnings: monthRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0),
+      recordCount: monthRecords.length,
+      customerCount: groups.size,
+      customers: customersInMonth
+    };
+  }, [records, selectedSalesMonth]);
+
   const recoveryRate = totalRevenue > 0
     ? Math.min(100, Math.round((totalReceive / totalRevenue) * 100))
     : 0;
@@ -143,6 +206,40 @@ export default function DashboardPage({
         <StatCard label="Total milk recorded" value={`${Number(quantityUnit === 'liter' ? totalMilkQuantityLiter : totalMilkQuantityKg).toLocaleString('en-IN')} ${quantityUnit === 'liter' ? 'L' : 'kg'}`} detail={`${totalRecords} entries recorded`} icon={TrendingUp} tone="emerald" />
         <StatCard label="Total revenue" value={currency(totalRevenue)} detail={`Received ${currency(totalReceive)}`} icon={IndianRupee} tone="violet" />
         <StatCard label="Pending payments" value={currency(totalPending)} detail="Amount yet to be collected" icon={AlertCircle} tone="rose" />
+      </section>
+
+      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Monthly milk sales</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sales and customer-wise milk records for each month</p>
+          </div>
+          <label className="w-full sm:w-56">
+            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Select month</span>
+            <select value={selectedSalesMonth} onChange={event => setSelectedSalesMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-slate-800 dark:text-white">
+              {availableSalesMonths.map(month => <option key={month} value={month}>{monthLabel(month)}</option>)}
+            </select>
+          </label>
+        </div>
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <StatCard label="Milk sold" value={`${monthlySales.totalQuantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${monthlySales.unitLabel}`} detail={`${monthlySales.recordCount} milk entries`} icon={Milk} tone="sky" />
+          <StatCard label="Total earnings" value={currency(monthlySales.totalEarnings)} detail="Value of milk sold in this month" icon={IndianRupee} tone="emerald" />
+          <StatCard label="Customers served" value={monthlySales.customerCount} detail="Customers with milk entries" icon={Users} tone="violet" />
+        </div>
+        <div className="mt-5">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Customer-wise milk sales</h3>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">How much milk each customer received in {monthLabel(selectedSalesMonth)}</p>
+          {monthlySales.customers.length ? (
+            <div className="mt-3 overflow-x-auto">
+              <table className="w-full min-w-[480px] text-left text-sm">
+                <thead><tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400"><th className="py-3 pr-3">Customer</th><th className="py-3 pr-3 text-right">Milk quantity</th><th className="py-3 text-right">Earnings</th></tr></thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {monthlySales.customers.map(customer => <tr key={customer.key}><td className="py-3 pr-3 font-semibold text-slate-800 dark:text-slate-100">{customer.name}</td><td className="py-3 pr-3 text-right tabular-nums">{customer.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {customer.unitLabel}</td><td className="py-3 text-right font-semibold tabular-nums">{currency(customer.earnings)}</td></tr>)}
+                </tbody>
+              </table>
+            </div>
+          ) : <div className="mt-3"><EmptyState title="No milk sales for this month" detail="Choose another month or add milk entries to see the sales report." /></div>}
+        </div>
       </section>
 
       <section className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
