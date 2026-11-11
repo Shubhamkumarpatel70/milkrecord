@@ -34,7 +34,9 @@ export default function CustomerManagementPage({
     if (!value) return '—';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '—';
-    return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(date);
+    const parts = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }).formatToParts(date);
+    const dateParts = Object.fromEntries(parts.map(part => [part.type, part.value]));
+    return `${dateParts.day}-${dateParts.month}-${dateParts.year}`;
   };
 
   // Filter customers based on search & status
