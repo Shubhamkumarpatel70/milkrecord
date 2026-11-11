@@ -182,7 +182,7 @@ export default function CustomerManagementPage({
                 {/* Card Actions */}
                 <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/60">
                   <button
-                    onClick={() => onViewCustomer && onViewCustomer(cust.userId, cust.month, cust.name)}
+                    onClick={() => onViewCustomer && onViewCustomer(cust)}
                     className="flex-1 py-2 px-2.5 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 hover:bg-sky-100 font-bold text-xs flex items-center justify-center gap-1 transition-colors min-h-[38px]"
                   >
                     <Eye className="w-3.5 h-3.5" />
@@ -268,7 +268,7 @@ export default function CustomerManagementPage({
                       </td>
                       <td className="p-3 sm:p-4 text-right space-x-1.5">
                         <button
-                          onClick={() => onViewCustomer && onViewCustomer(c.userId, c.month, c.name)}
+                          onClick={() => onViewCustomer && onViewCustomer(c)}
                           className="px-2.5 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold"
                         >
                           View
