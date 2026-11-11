@@ -443,7 +443,7 @@ export function MainAppContent() {
                   customer: record.customerName || record.customer || '',
                   quantityKg: record.quantityKg || record.quantity || '',
                   amount: record.amount || '',
-                  ratePerUnit: Number(record.ratePerUnit ?? (Number(record.amount || 0) / Math.max(Number(record.quantityKg || 1), 1))),
+                  ratePerUnit: Number(record.ratePerUnit ?? (Number(record.amount || 0) / Number(record.quantityKg || 1))),
                   quantityUnit: record.quantityUnit || 'kg',
                   shift: record.shift || 'morning',
                   date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
