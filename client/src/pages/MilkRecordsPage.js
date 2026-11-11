@@ -21,7 +21,7 @@ export default function MilkRecordsPage({
   // Customer names are unique per owner (enforced by the API), so the
   // normalized name is the reliable cross-version match. Use ID only when
   // the record has no customer name at all.
-  const normalizeCustomerName = value => String(value || '').trim().toLocaleLowerCase();
+  const normalizeCustomerName = value => String(value || '').trim();
   const selectedCustomerName = normalizeCustomerName(selectedCustomer?.name);
   const selectedCustomerId = String(selectedCustomer?._id || '');
   const customerRecords = selectedCustomer
