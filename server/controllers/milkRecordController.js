@@ -151,19 +151,9 @@ exports.getAllCustomers = async (req, res) => {
       return res.status(400).json({ message: 'User ID is required' });
     }
     
-    // Get all milk records for this user to find their customers
-    const userRecords = await MilkRecord.find({ user: userId });
-    
-    // Extract unique customer names from the user's records
-    const customerNames = [...new Set(userRecords.map(record => record.customer))];
-    
-    // Get customer details for these customers (only for this user)
-    const customers = await Customer.find({ 
-      name: { $in: customerNames },
-      user: userId 
-    }, '_id name');
-        
-    res.json(customers);
+    // Return every customer, including those without milk entries yet.
+    const customers = await Customer.find({ user: userId }, '_id name whatsapp').sort({ name: 1 });
+    return res.json(customers);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
