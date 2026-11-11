@@ -5,18 +5,29 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, user, whatsapp } = req.body;
-    if (!customer || !quantityKg || !amount || !user) {
-      return res.status(400).json({ message: 'Customer, quantity in kg, amount, and user are required.' });
+    const { customer, quantityKg, quantityUnit = 'kg', amount, whatsapp, createdAt, shift = 'morning' } = req.body;
+    const ownerId = req.authUser._id;
+    const quantity = Number(quantityKg);
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit)) {
+      return res.status(400).json({ message: 'Enter a customer, positive quantity, valid unit and shift.' });
     }
+    const owner = await User.findById(ownerId).select('businessProfile');
+    const configured = owner?.businessProfile?.isConfigured;
+    const effectiveUnit = configured ? owner.businessProfile.quantityUnit : quantityUnit;
+    const ratePerUnit = configured ? Number(owner.businessProfile.milkRate) : 50;
+    const totalAmount = Math.round(quantity * ratePerUnit * 100) / 100;
+    const entryDate = createdAt ? new Date(createdAt) : new Date();
+    if (Number.isNaN(entryDate.getTime()) || entryDate > new Date(Date.now() + 5 * 60 * 1000)) return res.status(400).json({ message: 'Invalid milk record date.' });
     
     // Verify that the customer belongs to the user
-    const customerDoc = await Customer.findOne({ name: customer, user: user });
+    const customerMatches = await Customer.find({ name: String(customer).trim(), user: ownerId }).limit(2);
+    if (customerMatches.length > 1) return res.status(409).json({ message: 'More than one customer has this name. Rename duplicates before adding milk records.' });
+    const customerDoc = customerMatches[0];
     if (!customerDoc) {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer, quantityKg, amount, user, whatsapp });
+    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, quantityUnit: effectiveUnit, ratePerUnit, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {
@@ -25,134 +36,130 @@ exports.createMilkRecord = async (req, res) => {
   }
 };
 
+exports.updateMilkRecord = async (req, res) => {
+  try {
+    const ownerId = req.authUser._id;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, shift, createdAt } = req.body;
+    const quantity = Number(quantityKg);
+    const entryDate = new Date(createdAt);
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 ||
+        !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit) || Number.isNaN(entryDate.getTime()) ||
+        entryDate > new Date(Date.now() + 5 * 60 * 1000)) {
+      return res.status(400).json({ message: 'Enter valid customer, quantity, unit, shift and date.' });
+    }
+
+    const record = await MilkRecord.findOne({ _id: req.params.recordId, user: ownerId });
+    if (!record) return res.status(404).json({ message: 'Milk record not found.' });
+    const historicalRate = record.ratePerUnit !== undefined && record.ratePerUnit !== null ? Number(record.ratePerUnit) : Number(record.amount || 0) / Number(record.quantityKg || 1);
+    const totalAmount = Math.round(quantity * historicalRate * 100) / 100;
+    if (totalAmount < Number(record.paidAmount || 0)) {
+      return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
+    }
+
+    const customerMatches = await Customer.find({ name: String(customer).trim(), user: ownerId }).limit(2);
+    if (customerMatches.length > 1) return res.status(409).json({ message: 'More than one customer has this name. Rename duplicates before editing this record.' });
+    const customerDoc = customerMatches[0];
+    if (!customerDoc) return res.status(400).json({ message: 'Select a customer from your customer list.' });
+
+    record.customer = customerDoc.name;
+    record.customerId = customerDoc._id;
+    record.whatsapp = customerDoc.whatsapp;
+    record.quantityKg = quantity;
+    record.quantityUnit = record.quantityUnit || quantityUnit;
+    record.ratePerUnit = historicalRate;
+    record.amount = totalAmount;
+    record.shift = shift;
+    record.createdAt = entryDate;
+    record.status = Number(record.paidAmount || 0) >= totalAmount ? 'paid' : 'unpaid';
+    await record.save();
+
+    return res.json({ message: 'Milk record updated successfully.', record });
+  } catch (err) {
+    console.error('Update milk record error:', err);
+    return res.status(500).json({ message: 'Unable to update milk record.' });
+  }
+};
+
 // Get all users with name, month, total days, total amount
 exports.getAllUserSummaries = async (req, res) => {
   try {
-    const { userId } = req.query;
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
-    }
+    const userId = String(req.authUser._id);
+    const [userRecords, customerDocs] = await Promise.all([
+      MilkRecord.find({ user: userId }).sort({ createdAt: 1 }),
+      Customer.find({ user: userId }).select('_id name whatsapp')
+    ]);
 
-    // Get all milk records for this specific user
-    const userRecords = await MilkRecord.find({ user: userId });
-    
-    // Group records by customer and month
-    const customerMonthMap = {};
-    
+    const groups = new Map();
+    const ensureGroup = (key, details) => {
+      if (!groups.has(key)) groups.set(key, { ...details, months: new Map() });
+      return groups.get(key);
+    };
+
+    customerDocs.forEach(customer => {
+      ensureGroup(String(customer._id), {
+        customerId: String(customer._id),
+        name: customer.name,
+        whatsapp: customer.whatsapp || ''
+      });
+    });
+
     userRecords.forEach(record => {
-      const month = record.createdAt.toISOString().slice(0,7); // YYYY-MM
-      const customerName = record.customer;
-      
-      if (!customerMonthMap[customerName]) {
-        customerMonthMap[customerName] = {};
+      const key = record.customerId ? String(record.customerId) : `legacy:${record.customer}`;
+      const group = ensureGroup(key, {
+        customerId: record.customerId ? String(record.customerId) : null,
+        name: record.customer,
+        whatsapp: record.whatsapp || ''
+      });
+      const month = moment(record.createdAt).format('YYYY-MM');
+      if (!group.months.has(month)) {
+        group.months.set(month, { days: new Set(), totalAmount: 0, paidAmount: 0 });
       }
-      
-      if (!customerMonthMap[customerName][month]) {
-        customerMonthMap[customerName][month] = { 
-          days: new Set(), 
-          totalAmount: 0, 
-          paidAmount: 0,
-          records: []
-        };
-      }
-      
-      customerMonthMap[customerName][month].days.add(record.createdAt.toISOString().slice(0,10));
-      customerMonthMap[customerName][month].totalAmount += record.amount;
-      customerMonthMap[customerName][month].paidAmount += (record.paidAmount || 0);
-      customerMonthMap[customerName][month].records.push(record);
+      const summary = group.months.get(month);
+      summary.days.add(moment(record.createdAt).format('YYYY-MM-DD'));
+      summary.totalAmount += Number(record.amount || 0);
+      summary.paidAmount += Number(record.paidAmount || 0);
     });
-    
-    // Always include current month for all customers, even if no records exist
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
-    
-    // Get all customers that this user has records for
-    const customerNames = Object.keys(customerMonthMap);
 
-    // Fetch WhatsApp numbers for these customers (only for this user)
-    const customerDocs = await Customer.find({ 
-      name: { $in: customerNames },
-      user: userId 
-    });
-    const customerWhatsAppMap = {};
-    customerDocs.forEach(c => { customerWhatsAppMap[c.name] = c.whatsapp; });
-
-    // For each customer, ensure current month exists
-    customerNames.forEach(customerName => {
-      if (!customerMonthMap[customerName][currentMonth]) {
-        customerMonthMap[customerName][currentMonth] = {
-          days: new Set(),
-          totalAmount: 0,
-          paidAmount: 0,
-          records: []
-        };
-      }
-    });
-    
-    // Convert to summary format
+    const currentMonth = moment().format('YYYY-MM');
     const summaries = [];
-    
-    Object.entries(customerMonthMap).forEach(([customerName, months]) => {
-      Object.entries(months).forEach(([month, data]) => {
-        const status = data.paidAmount >= data.totalAmount ? 'paid' : 'unpaid';
+    groups.forEach(group => {
+      if (!group.months.has(currentMonth)) {
+        group.months.set(currentMonth, { days: new Set(), totalAmount: 0, paidAmount: 0 });
+      }
+      group.months.forEach((data, month) => {
         summaries.push({
-          name: customerName,
-          whatsapp: customerWhatsAppMap[customerName] || '',
+          _id: group.customerId,
+          name: group.name,
+          whatsapp: group.whatsapp,
           month,
           totalDays: data.days.size,
-          totalAmount: data.totalAmount,
-          paidAmount: data.paidAmount,
-          status,
-          userId: userId // Use the logged-in user's ID
+          totalAmount: Math.round(data.totalAmount * 100) / 100,
+          paidAmount: Math.round(data.paidAmount * 100) / 100,
+          status: data.totalAmount > 0 && data.paidAmount >= data.totalAmount ? 'paid' : 'unpaid',
+          userId
         });
       });
     });
-    
-    // Sort by month (newest first)
-    summaries.sort((a, b) => b.month.localeCompare(a.month));
-    
-    res.json(summaries);
+
+    summaries.sort((a, b) => b.month.localeCompare(a.month) || a.name.localeCompare(b.name));
+    return res.json(summaries);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Get customer summaries error:', err);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
     }
     
-    console.log('=== getAllCustomers Debug ===');
-    console.log('Requested userId:', userId);
-    
-    // Get all milk records for this user to find their customers
-    const userRecords = await MilkRecord.find({ user: userId });
-    console.log('User records found:', userRecords.length);
-    console.log('User records:', userRecords.map(r => ({ customer: r.customer, amount: r.amount, date: r.createdAt })));
-    
-    // Extract unique customer names from the user's records
-    const customerNames = [...new Set(userRecords.map(record => record.customer))];
-    console.log('Unique customer names from user records:', customerNames);
-    
-    // Get customer details for these customers (only for this user)
-    const customers = await Customer.find({ 
-      name: { $in: customerNames },
-      user: userId 
-    }, '_id name');
-    console.log('Customers found in database:', customers.length, customers.map(c => c.name));
-    
-    // Also check all customers in database for comparison
-    const allCustomers = await Customer.find({}, '_id name');
-    console.log('All customers in database:', allCustomers.length, allCustomers.map(c => c.name));
-    
-    console.log('=== End Debug ===');
-    
-    res.json(customers);
+    // Return every customer, including those without milk entries yet.
+    const customers = await Customer.find({ user: userId }, '_id name whatsapp paymentTransactions').sort({ name: 1 });
+    return res.json(customers);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
@@ -162,7 +169,7 @@ exports.getAllCustomers = async (req, res) => {
 // Get today's total milk quantity across all customers
 exports.getTodaysMilkQuantity = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -183,12 +190,14 @@ exports.getTodaysMilkQuantity = async (req, res) => {
     });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = todaysRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = todaysRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = todaysRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Today's total milk quantity for user ${userId}: ${totalQuantityKg}kg from ${todaysRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: todaysRecords.length,
       date: today.toISOString().slice(0, 10)
     });
@@ -201,7 +210,7 @@ exports.getTodaysMilkQuantity = async (req, res) => {
 // Get total milk quantity across all records (all-time)
 exports.getTotalMilkQuantity = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -211,12 +220,14 @@ exports.getTotalMilkQuantity = async (req, res) => {
     const allRecords = await MilkRecord.find({ user: userId });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = allRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = allRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = allRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Total milk quantity (all-time) for user ${userId}: ${totalQuantityKg}kg from ${allRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: allRecords.length
     });
   } catch (err) {
@@ -227,7 +238,8 @@ exports.getTotalMilkQuantity = async (req, res) => {
 
 exports.getCustomerDetails = async (req, res) => {
   try {
-    const { userId, month, customerName } = req.query; // month: YYYY-MM
+    const userId = String(req.authUser._id);
+    const { month, customerName } = req.query; // month: YYYY-MM
     console.log('getCustomerDetails userId:', userId, 'month:', month, 'customerName:', customerName);
     if (!month) return res.status(400).json({ message: 'month is required.' });
     
@@ -352,22 +364,20 @@ exports.getCustomerDetails = async (req, res) => {
 exports.updateMilkRecordStatus = async (req, res) => {
   try {
     const { recordId, status, paidAmount } = req.body;
-    console.log('Updating record:', recordId, 'with status:', status, 'paidAmount:', paidAmount);
-    
+    const userId = String(req.authUser._id);
+        
     if (!recordId) {
       return res.status(400).json({ message: 'Record ID is required.' });
     }
     
-    const record = await MilkRecord.findById(recordId);
+    const record = await MilkRecord.findOne({ _id: recordId, user: userId });
     if (!record) return res.status(404).json({ message: 'Record not found.' });
     
-    // Update the record with the provided values
-    if (status !== undefined) {
-      record.status = status;
-    }
-    if (paidAmount !== undefined) {
-      record.paidAmount = paidAmount;
-    }
+    if (status !== undefined && !['paid', 'unpaid'].includes(status)) return res.status(400).json({ message: 'Invalid payment status.' });
+    if (paidAmount !== undefined && (!Number.isFinite(Number(paidAmount)) || Number(paidAmount) < 0 || Number(paidAmount) > record.amount)) return res.status(400).json({ message: 'Paid amount must be between zero and the record amount.' });
+    if (paidAmount !== undefined) record.paidAmount = Number(paidAmount);
+    else if (status === 'paid') record.paidAmount = record.amount;
+    else if (status === 'unpaid') record.paidAmount = 0;
     
     // Ensure status is consistent with paid amount
     if (record.paidAmount >= record.amount) {
@@ -377,8 +387,7 @@ exports.updateMilkRecordStatus = async (req, res) => {
       record.status = 'unpaid';
     }
     
-    console.log('Saving record with status:', record.status, 'paidAmount:', record.paidAmount);
-    await record.save();
+        await record.save();
     
     res.json({ message: 'Status updated.', record });
   } catch (err) {
@@ -390,64 +399,79 @@ exports.updateMilkRecordStatus = async (req, res) => {
 // Customer payment functionality
 exports.customerPayment = async (req, res) => {
   try {
-    const { customerId, amount, month } = req.body;
-    
-    if (!customerId || !amount || !month) {
-      return res.status(400).json({ message: 'Customer ID, amount, and month are required.' });
+    const { customerId, amount, month, paymentDate, remark = '' } = req.body;
+    const userId = String(req.authUser._id);
+    const paymentAmount = Math.round(Number(amount) * 100) / 100;
+    const transactionDate = paymentDate ? new Date(`${paymentDate}T12:00:00`) : new Date();
+    const cleanRemark = String(remark || '').trim();
+
+    if (!customerId || !Number.isFinite(paymentAmount) || paymentAmount <= 0 ||
+        !/^[0-9]{4}-[0-9]{2}$/.test(String(month || '')) ||
+        Number.isNaN(transactionDate.getTime()) ||
+        (paymentDate && (!/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate)) || !moment(paymentDate, 'YYYY-MM-DD', true).isValid())) ||
+        (paymentDate && moment(paymentDate).isAfter(moment().utcOffset(330).format('YYYY-MM-DD'))) ||
+        cleanRemark.length > 500) {
+      return res.status(400).json({ message: 'Enter a valid customer, amount, payment date, month and remark (maximum 500 characters).' });
     }
-    
-    // Find the customer
-    const customer = await Customer.findById(customerId);
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found.' });
-    }
-    
-    // Get all records for the customer in the specified month
+
+    const customer = await Customer.findOne({ _id: customerId, user: userId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+
     const start = moment(month + '-01');
-    const end = start.clone().endOf('month');
-    
+    if (!start.isValid() || start.format('YYYY-MM') !== month) {
+      return res.status(400).json({ message: 'Invalid payment month.' });
+    }
+    const end = start.clone().add(1, 'month');
+
+    const sameNameCustomers = await Customer.find({ user: userId, name: customer.name }).select('_id');
+    const recordMatch = sameNameCustomers.length === 1
+      ? { $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }] }
+      : { customerId: customer._id };
     const records = await MilkRecord.find({
-      customer: customer.name,
-      createdAt: { $gte: start.toDate(), $lte: end.toDate() }
-    });
-    
-    if (records.length === 0) {
-      return res.status(404).json({ message: 'No records found for this month.' });
+      user: userId,
+      ...recordMatch,
+      createdAt: { $gte: start.toDate(), $lt: end.toDate() }
+    }).sort({ createdAt: 1, _id: 1 });
+
+    if (!records.length) return res.status(404).json({ message: 'No records found for this month.' });
+
+    const totalAmount = records.reduce((sum, record) => sum + Number(record.amount || 0), 0);
+    const totalPaid = records.reduce((sum, record) => sum + Number(record.paidAmount || 0), 0);
+    const remainingAmount = Math.max(0, Math.round((totalAmount - totalPaid) * 100) / 100);
+    if (paymentAmount > remainingAmount) {
+      return res.status(400).json({ message: 'Payment amount exceeds remaining balance.', remainingAmount });
     }
-    
-    // Calculate total amount and paid amount
-    const totalAmount = records.reduce((sum, record) => sum + record.amount, 0);
-    const totalPaid = records.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
-    const remainingAmount = totalAmount - totalPaid;
-    
-    if (amount > remainingAmount) {
-      return res.status(400).json({ message: 'Payment amount exceeds remaining balance.' });
-    }
-    
-    // Distribute payment across records (prioritize older records)
-    let remainingPayment = amount;
+
+    let remainingPayment = paymentAmount;
     for (const record of records) {
       if (remainingPayment <= 0) break;
-      
-      const recordRemaining = record.amount - (record.paidAmount || 0);
-      if (recordRemaining > 0) {
-        const paymentForThisRecord = Math.min(remainingPayment, recordRemaining);
-        record.paidAmount = (record.paidAmount || 0) + paymentForThisRecord;
-        record.status = record.paidAmount >= record.amount ? 'paid' : 'unpaid';
-        await record.save();
-        remainingPayment -= paymentForThisRecord;
-      }
+      const recordRemaining = Math.max(0, Math.round((Number(record.amount || 0) - Number(record.paidAmount || 0)) * 100) / 100);
+      if (recordRemaining <= 0) continue;
+      const applied = Math.min(remainingPayment, recordRemaining);
+      record.paidAmount = Math.round((Number(record.paidAmount || 0) + applied) * 100) / 100;
+      record.status = record.paidAmount >= Number(record.amount || 0) ? 'paid' : 'unpaid';
+      await record.save();
+      remainingPayment = Math.round((remainingPayment - applied) * 100) / 100;
     }
-    
-    res.json({
-      success: true,
-      message: `Payment of ₹${amount} processed successfully.`,
-      totalPaid: totalPaid + amount,
-      remainingAmount: remainingAmount - amount
+
+    // Keep a permanent, date-wise transaction entry independent of milk records.
+    customer.paymentTransactions.push({
+      amount: paymentAmount,
+      paymentDate: transactionDate,
+      remark: cleanRemark
     });
-    
+    await customer.save();
+
+    const newRemaining = Math.max(0, Math.round((remainingAmount - paymentAmount) * 100) / 100);
+    return res.json({
+      success: true,
+      message: `Payment of ₹${paymentAmount.toFixed(2)} recorded successfully.`,
+      totalPaid: Math.round((totalPaid + paymentAmount) * 100) / 100,
+      remainingAmount: newRemaining,
+      transaction: customer.paymentTransactions[customer.paymentTransactions.length - 1]
+    });
   } catch (err) {
     console.error('Customer payment error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    return res.status(500).json({ message: 'Unable to process payment. Please try again.' });
   }
-}; 
+};

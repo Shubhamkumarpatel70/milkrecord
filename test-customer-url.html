@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Customer URL</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-link {
+            display: inline-block;
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 5px;
+            margin: 10px 5px;
+        }
+        .test-link:hover {
+            background: #0056b3;
+        }
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Customer Verification URL Test</h1>
+    
+    <div class="info">
+        <h3>How to test:</h3>
+        <ol>
+            <li>Make sure your React app is running on <code>http://localhost:3000</code></li>
+            <li>Make sure your backend server is running on <code>http://localhost:5000</code></li>
+            <li>Click the test links below to verify the customer verification flow</li>
+        </ol>
+    </div>
+
+    <div class="test-card">
+        <h3>Test Customer Verification URLs:</h3>
+        <p>Click these links to test the customer verification flow:</p>
+        
+        <a href="http://localhost:3000/customer/68847891958badf20c451185" class="test-link" target="_blank">
+            Test Customer ID: 68847891958badf20c451185
+        </a>
+        
+        <a href="http://localhost:3000/customer/test123" class="test-link" target="_blank">
+            Test Customer ID: test123
+        </a>
+        
+        <a href="http://localhost:3000/customer/invalid-id" class="test-link" target="_blank">
+            Test Invalid Customer ID
+        </a>
+    </div>
+
+    <div class="test-card">
+        <h3>Expected Behavior:</h3>
+        <ul>
+            <li><strong>Valid Customer ID:</strong> Should show the customer verification form with the customer's name</li>
+            <li><strong>Invalid Customer ID:</strong> Should show an error message when trying to fetch customer info</li>
+            <li><strong>WhatsApp Verification:</strong> Should verify the WhatsApp number and show customer records</li>
+        </ul>
+    </div>
+
+    <div class="test-card">
+        <h3>Backend API Endpoints to Test:</h3>
+        <p>You can also test the backend APIs directly:</p>
+        
+        <a href="http://localhost:5000/api/customers/68847891958badf20c451185" class="test-link" target="_blank">
+            Get Customer Info: /api/customers/68847891958badf20c451185
+        </a>
+        
+        <a href="http://localhost:5000/api/customers" class="test-link" target="_blank">
+            Get All Customers: /api/customers
+        </a>
+    </div>
+
+    <script>
+        // Add some basic functionality to check if servers are running
+        async function checkServer(url, name) {
+            try {
+                const response = await fetch(url);
+                console.log(`${name} is running:`, response.status);
+                return true;
+            } catch (error) {
+                console.log(`${name} is not running:`, error.message);
+                return false;
+            }
+        }
+
+        // Check servers when page loads
+        window.addEventListener('load', async () => {
+            console.log('Checking servers...');
+            await checkServer('http://localhost:3000', 'React App');
+            await checkServer('http://localhost:5000', 'Backend Server');
+        });
+    </script>
+</body>
+</html>

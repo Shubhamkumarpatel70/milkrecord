@@ -18,7 +18,7 @@ async function listAdmins() {
         console.log(`\n${index + 1}. Admin User:`);
         console.log(`   Name: ${user.name}`);
         console.log(`   Mobile: ${user.mobile}`);
-        console.log(`   MPIN: ${user.mpin}`);
+        console.log('   MPIN: [hidden]');
         console.log(`   Role: ${user.role}`);
         console.log(`   Active: ${user.isActive !== false ? 'Yes' : 'No'}`);
         console.log(`   Created: ${user.createdAt.toLocaleDateString()}`);

@@ -39,7 +39,7 @@ exports.getAllMilkRecords = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, mobile, mpin, upiId, isActive } = req.body;
+    const { name, mobile, mpin, upiId, isActive, shopName, milkRate, quantityUnit } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -49,8 +49,22 @@ exports.updateUser = async (req, res) => {
     // Update basic fields
     user.name = name;
     user.mobile = mobile;
-    if (mpin) user.mpin = mpin;
+    if (mpin) {
+      if (!/^[0-9]{5}$/.test(String(mpin))) return res.status(400).json({ message: 'MPIN must be exactly 5 digits.' });
+      user.mpin = await require('bcryptjs').hash(String(mpin), 12);
+    }
     user.isActive = isActive;
+
+    // Update each dairy owner's independent business configuration when supplied.
+    if (shopName !== undefined || milkRate !== undefined || quantityUnit !== undefined) {
+      const nextShopName = String(shopName ?? user.businessProfile?.shopName ?? '').trim();
+      const nextRate = Number(milkRate ?? user.businessProfile?.milkRate ?? 50);
+      const nextUnit = String(quantityUnit ?? user.businessProfile?.quantityUnit ?? 'kg');
+      if (nextShopName.length > 100 || (nextShopName && nextShopName.length < 2) || !Number.isFinite(nextRate) || nextRate < 0 || nextRate > 100000 || !['kg', 'liter'].includes(nextUnit)) {
+        return res.status(400).json({ message: 'Invalid dairy name, milk rate or quantity unit.' });
+      }
+      user.businessProfile = { shopName: nextShopName, milkRate: nextRate, quantityUnit: nextUnit, isConfigured: Boolean(nextShopName) };
+    }
 
     // Update payment options
     if (!user.paymentOptions) {
@@ -62,7 +76,8 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
-    res.json({ message: 'User updated successfully.', user });
+    const safeUser = await User.findById(user._id).select('-mpin');
+    res.json({ message: 'User updated successfully.', user: safeUser });
   } catch (err) {
     console.error('Error updating user:', err);
     res.status(500).json({ message: 'Server error.' });
