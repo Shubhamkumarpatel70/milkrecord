@@ -207,6 +207,20 @@ export default function MilkRecordsPage({
                       <span className="font-extrabold text-emerald-600 dark:text-emerald-400">₹{rec.amount || 0}</span>
                     </div>
                   </div>
+
+                  {/* Mobile action: keep edit available on small screens too. */}
+                  <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                    <button
+                      type="button"
+                      onClick={() => onOpenEditRecord && onOpenEditRecord(rec)}
+                      disabled={!onOpenEditRecord}
+                      aria-label={`Edit milk entry for ${custName} on ${dateStr}`}
+                      className="inline-flex items-center justify-center gap-2 min-h-[40px] px-4 rounded-xl bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-300 dark:hover:bg-sky-900/60 text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Edit className="w-4 h-4" />
+                      <span>Edit Entry</span>
+                    </button>
+                  </div>
                 </div>
               );
             })}
