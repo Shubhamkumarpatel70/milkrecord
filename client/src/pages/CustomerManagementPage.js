@@ -9,6 +9,8 @@ import {
   Eye,
   Send,
   CreditCard,
+  ReceiptText,
+  X,
   Trash2
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
@@ -26,6 +28,14 @@ export default function CustomerManagementPage({
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'paid' | 'unpaid'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [transactionCustomer, setTransactionCustomer] = useState(null);
+
+  const formatDate = value => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(date);
+  };
 
   // Filter customers based on search & status
   const filteredCustomers = customers.filter(c => {
@@ -246,6 +256,14 @@ export default function CustomerManagementPage({
                     </button>
                   )}
                 </div>
+                <button
+                  type="button"
+                  onClick={() => setTransactionCustomer(cust)}
+                  className="mt-2 w-full min-h-[38px] rounded-xl border border-violet-200 dark:border-violet-900/60 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 font-bold text-xs flex items-center justify-center gap-2"
+                >
+                  <ReceiptText className="w-4 h-4" />
+                  <span>Show Transactions ({cust.paymentTransactions?.length || 0})</span>
+                </button>
 
               </div>
             );
@@ -304,6 +322,12 @@ export default function CustomerManagementPage({
                         >
                           {isPaid ? 'Paid' : 'Pay'}
                         </button>
+                        <button
+                          onClick={() => setTransactionCustomer(c)}
+                          className="px-2.5 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 font-bold"
+                        >
+                          Transactions
+                        </button>
                         {onDeleteCustomer && (
                           <button
                             onClick={() => onDeleteCustomer(c._id, c.name)}
@@ -319,6 +343,55 @@ export default function CustomerManagementPage({
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {transactionCustomer && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="w-full max-w-lg max-h-[88vh] overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col">
+            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Payment Transactions</h2>
+                <p className="text-xs text-slate-500 mt-1">{transactionCustomer.name} · Date-wise payment history</p>
+              </div>
+              <button type="button" onClick={() => setTransactionCustomer(null)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500" aria-label="Close transactions">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-3">
+                  <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300">Total Received</p>
+                  <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">₹{(transactionCustomer.paymentTransactions || []).reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toFixed(2)}</p>
+                </div>
+                <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/30 p-3">
+                  <p className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-300">Transactions</p>
+                  <p className="text-xl font-extrabold text-rose-700 dark:text-rose-300">{transactionCustomer.paymentTransactions?.length || 0}</p>
+                </div>
+              </div>
+              {(transactionCustomer.paymentTransactions || []).length === 0 ? (
+                <div className="py-10 text-center text-sm text-slate-500">
+                  No transaction history found yet.
+                  <p className="text-xs mt-1">New payments will appear here with date and optional remark.</p>
+                </div>
+              ) : (
+                [...transactionCustomer.paymentTransactions]
+                  .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
+                  .map((tx, index) => (
+                    <div key={tx._id || index} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 dark:text-slate-100">{formatDate(tx.paymentDate)}</p>
+                        <p className="text-xs text-slate-500 mt-1 break-words">{tx.remark || 'No remark'}</p>
+                      </div>
+                      <p className="shrink-0 font-extrabold text-emerald-600 dark:text-emerald-400">₹{Number(tx.amount || 0).toFixed(2)}</p>
+                    </div>
+                  ))
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+              <button type="button" onClick={() => setTransactionCustomer(null)} className="w-full btn-secondary text-xs py-3">Close</button>
+            </div>
           </div>
         </div>
       )}
