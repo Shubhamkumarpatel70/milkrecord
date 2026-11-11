@@ -15,7 +15,9 @@ exports.createMilkRecord = async (req, res) => {
     if (Number.isNaN(entryDate.getTime()) || entryDate > new Date(Date.now() + 5 * 60 * 1000)) return res.status(400).json({ message: 'Invalid milk record date.' });
     
     // Verify that the customer belongs to the user
-    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: ownerId });
+    const customerMatches = await Customer.find({ name: String(customer).trim(), user: ownerId }).limit(2);
+    if (customerMatches.length > 1) return res.status(409).json({ message: 'More than one customer has this name. Rename duplicates before adding milk records.' });
+    const customerDoc = customerMatches[0];
     if (!customerDoc) {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
@@ -50,7 +52,9 @@ exports.updateMilkRecord = async (req, res) => {
       return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
     }
 
-    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: ownerId });
+    const customerMatches = await Customer.find({ name: String(customer).trim(), user: ownerId }).limit(2);
+    if (customerMatches.length > 1) return res.status(409).json({ message: 'More than one customer has this name. Rename duplicates before editing this record.' });
+    const customerDoc = customerMatches[0];
     if (!customerDoc) return res.status(400).json({ message: 'Select a customer from your customer list.' });
 
     record.customer = customerDoc.name;
@@ -439,9 +443,13 @@ exports.customerPayment = async (req, res) => {
     }
     const end = start.clone().add(1, 'month');
 
+    const sameNameCustomers = await Customer.find({ user: userId, name: customer.name }).select('_id');
+    const recordMatch = sameNameCustomers.length === 1
+      ? { $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }] }
+      : { customerId: customer._id };
     const records = await MilkRecord.find({
       user: userId,
-      $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
+      ...recordMatch,
       createdAt: { $gte: start.toDate(), $lt: end.toDate() }
     }).sort({ createdAt: 1, _id: 1 });
 

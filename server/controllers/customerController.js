@@ -123,10 +123,15 @@ exports.getCustomerRecords = async (req, res) => {
     const start = new Date(month + '-01');
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     
+    const sameNameCustomers = await Customer.find({ user: customer.user, name: customer.name }).select('_id');
+    if (sameNameCustomers.length > 1) {
+      return res.status(409).json({ message: 'This customer name is shared by multiple customers. Resolve duplicate names before viewing legacy history.' });
+    }
+    const nextMonth = new Date(start.getFullYear(), start.getMonth() + 1, 1);
     const records = await MilkRecord.find({
       user: customer.user,
       $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
-      createdAt: { $gte: start, $lte: end }
+      createdAt: { $gte: start, $lt: nextMonth }
     }).sort({ createdAt: 1 });
     
     // Build a map of date -> records (array of records for each day)
