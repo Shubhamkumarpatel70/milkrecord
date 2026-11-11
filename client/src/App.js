@@ -23,6 +23,7 @@ import SettingsPage from './pages/SettingsPage';
 // Existing Admin & Auth Components
 import AdminDashboard from './components/AdminDashboard';
 import AuthScreen from './components/AuthScreen';
+import CustomerPortal from './components/CustomerPortal';
 
 // Configure Axios base URL with fallback
 const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
@@ -151,7 +152,7 @@ export function MainAppContent() {
   // Fetch Dashboard Stats & Customer Records
   const refreshData = useCallback(async () => {
 
-    if (!isAuthenticated) {
+    if (!isAuthenticated || userRole === 'customer') {
       setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
       setTotalReceive(0); setTotalPending(0); setTotalCustomers(0); setTotalRecords(0);
       setCustomers([]); setRecords([]);
@@ -224,7 +225,7 @@ export function MainAppContent() {
     } catch (err) {
       console.error('Failed to fetch dairy records:', err);
     }
-  }, [isAuthenticated, selectedMonth]);
+  }, [isAuthenticated, selectedMonth, userRole]);
 
   useEffect(() => {
     refreshData();
@@ -341,6 +342,10 @@ export function MainAppContent() {
 
   if (!isAuthenticated || !localStorage.getItem('authToken')) {
     return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); }} />;
+  }
+
+  if (userRole === 'customer') {
+    return <CustomerPortal onLogout={handleLogout} customerName={user?.name} />;
   }
 
   const handleDeleteCustomer = async (customerId, customerName) => {
