@@ -496,14 +496,23 @@ export function MainAppContent() {
             <form onSubmit={handleSaveRecord} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name</label>
-                <input
-                  type="text"
+                <select
                   required
                   value={recordForm.customer}
-                  onChange={e => setRecordForm({ ...recordForm, customer: e.target.value })}
+                  onChange={e => {
+                    const selected = customers.find(customer => customer.name === e.target.value);
+                    setRecordForm({ ...recordForm, customer: e.target.value, whatsapp: selected?.whatsapp || '' });
+                  }}
                   className="input-field"
-                  placeholder="e.g. Ramesh Patel"
-                />
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map(customer => <option key={customer._id} value={customer.name}>{customer.name}</option>)}
+                </select>
+                {customers.length === 0 && (
+                  <button type="button" onClick={() => { setShowAddRecordModal(false); setShowAddCustomerModal(true); }} className="text-xs text-sky-600 font-semibold mt-2">
+                    Add your first customer
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
