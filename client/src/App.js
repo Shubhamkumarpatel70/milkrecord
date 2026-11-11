@@ -45,6 +45,9 @@ export function MainAppContent() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+  const [showEditRecordModal, setShowEditRecordModal] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState(null);
+  const [editRecordForm, setEditRecordForm] = useState({ customer: '', quantityKg: '', amount: '', shift: 'morning', date: '' });
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showPaymentQRModal, setShowPaymentQRModal] = useState(false);
   const [showPaymentSettleModal, setShowPaymentSettleModal] = useState(null);
@@ -241,6 +244,23 @@ export function MainAppContent() {
     }
   };
 
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault();
+    if (!editingRecordId) return;
+    try {
+      await axios.put(`/api/milk-records/${editingRecordId}`, {
+        ...editRecordForm,
+        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50
+      });
+      setShowEditRecordModal(false);
+      setEditingRecordId(null);
+      await refreshData();
+      alert('Milk record updated successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update milk record.');
+    }
+  };
+
   // Customer Submission
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
@@ -411,7 +431,17 @@ export function MainAppContent() {
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
-              onOpenEditRecord={() => alert('Record editing is not available yet. Your existing record has not been changed.')}
+              onOpenEditRecord={(record) => {
+                setEditingRecordId(record._id);
+                setEditRecordForm({
+                  customer: record.customerName || record.customer || '',
+                  quantityKg: record.quantityKg || record.quantity || '',
+                  amount: record.amount || '',
+                  shift: record.shift || 'morning',
+                  date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+                });
+                setShowEditRecordModal(true);
+              }}
               onOpenCalendar={() => setCurrentView('customers')}
             />
           )}
@@ -524,6 +554,49 @@ export function MainAppContent() {
                 >
                   Save Milk Entry
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Milk Record Modal */}
+      {showEditRecordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Edit Milk Entry</h3>
+            <form onSubmit={handleUpdateRecord} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name</label>
+                <select required value={editRecordForm.customer} onChange={e => setEditRecordForm({ ...editRecordForm, customer: e.target.value })} className="input-field">
+                  <option value="">Select customer</option>
+                  {customers.map(customer => <option key={customer._id} value={customer.name}>{customer.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity (Kg)</label>
+                  <input type="number" min="0.01" step="0.01" required value={editRecordForm.quantityKg} onChange={e => setEditRecordForm({ ...editRecordForm, quantityKg: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Shift</label>
+                  <select value={editRecordForm.shift} onChange={e => setEditRecordForm({ ...editRecordForm, shift: e.target.value })} className="input-field">
+                    <option value="morning">Morning</option>
+                    <option value="evening">Evening</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (₹)</label>
+                <input type="number" min="0" step="0.01" required value={editRecordForm.amount} onChange={e => setEditRecordForm({ ...editRecordForm, amount: e.target.value })} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Entry Date</label>
+                <input type="date" required max={new Date().toISOString().slice(0, 10)} value={editRecordForm.date} onChange={e => setEditRecordForm({ ...editRecordForm, date: e.target.value })} className="input-field" />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setShowEditRecordModal(false); setEditingRecordId(null); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Changes</button>
               </div>
             </form>
           </div>

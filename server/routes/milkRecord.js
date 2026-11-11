@@ -12,6 +12,7 @@ router.get('/today', milkRecordController.getTodaysMilkQuantity);
 router.get('/total', milkRecordController.getTotalMilkQuantity);
 router.get('/details', milkRecordController.getCustomerDetails);
 router.put('/status', milkRecordController.updateMilkRecordStatus);
+router.put('/:recordId', milkRecordController.updateMilkRecord);
 router.post('/payment', milkRecordController.customerPayment);
 
 module.exports = router;

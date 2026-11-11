@@ -29,6 +29,47 @@ exports.createMilkRecord = async (req, res) => {
   }
 };
 
+exports.updateMilkRecord = async (req, res) => {
+  try {
+    const ownerId = req.authUser._id;
+    const { customer, quantityKg, amount, shift, createdAt } = req.body;
+    const quantity = Number(quantityKg);
+    const totalAmount = Number(amount);
+    const entryDate = new Date(createdAt);
+
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 ||
+        !Number.isFinite(totalAmount) || totalAmount < 0 ||
+        !['morning', 'evening'].includes(shift) || Number.isNaN(entryDate.getTime()) ||
+        entryDate > new Date(Date.now() + 5 * 60 * 1000)) {
+      return res.status(400).json({ message: 'Enter valid customer, quantity, amount, shift and date.' });
+    }
+
+    const record = await MilkRecord.findOne({ _id: req.params.recordId, user: ownerId });
+    if (!record) return res.status(404).json({ message: 'Milk record not found.' });
+    if (totalAmount < Number(record.paidAmount || 0)) {
+      return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
+    }
+
+    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: ownerId });
+    if (!customerDoc) return res.status(400).json({ message: 'Select a customer from your customer list.' });
+
+    record.customer = customerDoc.name;
+    record.customerId = customerDoc._id;
+    record.whatsapp = customerDoc.whatsapp;
+    record.quantityKg = quantity;
+    record.amount = totalAmount;
+    record.shift = shift;
+    record.createdAt = entryDate;
+    record.status = Number(record.paidAmount || 0) >= totalAmount ? 'paid' : 'unpaid';
+    await record.save();
+
+    return res.json({ message: 'Milk record updated successfully.', record });
+  } catch (err) {
+    console.error('Update milk record error:', err);
+    return res.status(500).json({ message: 'Unable to update milk record.' });
+  }
+};
+
 // Get all users with name, month, total days, total amount
 exports.getAllUserSummaries = async (req, res) => {
   try {
