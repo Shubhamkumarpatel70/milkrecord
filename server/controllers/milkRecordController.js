@@ -343,11 +343,11 @@ exports.updateMilkRecordStatus = async (req, res) => {
   try {
     const { recordId, status, paidAmount, userId } = req.body;
         
-    if (!recordId) {
+    if (!recordId || !userId) {
       return res.status(400).json({ message: 'Record ID is required.' });
     }
     
-    const record = await MilkRecord.findOne({ _id: recordId, ...(userId ? { user: userId } : {}) });
+    const record = await MilkRecord.findOne({ _id: recordId, user: userId });
     if (!record) return res.status(404).json({ message: 'Record not found.' });
     
     if (status !== undefined && !['paid', 'unpaid'].includes(status)) return res.status(400).json({ message: 'Invalid payment status.' });

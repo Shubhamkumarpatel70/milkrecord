@@ -287,7 +287,7 @@ export function MainAppContent() {
     if (!window.confirm(`Are you sure you want to remove customer ${customerName}?`)) return;
     try {
       if (isAuthenticated && customerId) {
-        await axios.delete(`/api/customers/${customerId}`);
+        await axios.delete(`/api/customers/${customerId}?userId=${encodeURIComponent(localStorage.getItem('userId'))}`);
       }
       setCustomers(prev => prev.filter(c => c._id !== customerId && c.name !== customerName));
       refreshData();
@@ -625,6 +625,7 @@ export function MainAppContent() {
                     try {
                       await axios.put('/api/milk-records/status', {
                         recordId: showPaymentSettleModal._id,
+                        userId: localStorage.getItem('userId'),
                         status: 'paid',
                         paidAmount: showPaymentSettleModal.totalAmount
                       });
