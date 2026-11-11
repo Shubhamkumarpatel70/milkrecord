@@ -22,6 +22,7 @@ import SettingsPage from './pages/SettingsPage';
 
 // Existing Admin & Auth Components
 import AdminDashboard from './components/AdminDashboard';
+import AuthScreen from './components/AuthScreen';
 
 // Configure Axios base URL with fallback
 const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
@@ -89,17 +90,22 @@ export function MainAppContent() {
     }
 
     // Check Auth
+    const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
     const storedRole = localStorage.getItem('userRole');
     const userName = localStorage.getItem('userName');
 
-    if (userId) {
+    if (token && userId) {
       setIsAuthenticated(true);
       setUserRole(storedRole || 'user');
       setUser({ _id: userId, name: userName || 'Dairy Owner', role: storedRole || 'user' });
     } else {
-      setIsDemoMode(true);
-      setUser({ name: 'Demo Dairy User', role: 'demo' });
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      setIsDemoMode(false);
+      setUser(null);
     }
 
     // Check First-Time Onboarding
@@ -109,6 +115,26 @@ export function MainAppContent() {
     }
 
     setLoading(false);
+  }, []);
+
+  // Attach the signed session to every API request. Never send a client-selected owner identity as authority.
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use(config => {
+      const token = localStorage.getItem('authToken');
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+      return config;
+    });
+    const responseInterceptor = axios.interceptors.response.use(response => response, error => {
+      if (error.response?.status === 401 && localStorage.getItem('authToken')) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userName');
+        window.location.reload();
+      }
+      return Promise.reject(error);
+    });
+    return () => { axios.interceptors.request.eject(interceptor); axios.interceptors.response.eject(responseInterceptor); };
   }, []);
 
   // Sync Theme
@@ -269,9 +295,11 @@ export function MainAppContent() {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
+    ['authToken', 'userId', 'userRole', 'userName'].forEach(key => localStorage.removeItem(key));
     setIsAuthenticated(false);
-    setIsDemoMode(true);
+    setIsDemoMode(false);
+    setUser(null);
+    setUserRole('user');
     setCurrentView('dashboard');
   };
 
@@ -281,6 +309,10 @@ export function MainAppContent() {
         <SkeletonLoaders type="card" />
       </div>
     );
+  }
+
+  if (!isAuthenticated || !localStorage.getItem('authToken')) {
+    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); setIsDemoMode(false); }} />;
   }
 
   const handleDeleteCustomer = async (customerId, customerName) => {

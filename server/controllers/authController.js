@@ -2,6 +2,12 @@ const User = require('../models/User');
 const Customer = require('../models/Customer');
 const QRCode = require('qrcode');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const issueToken = user => {
+  if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+  return jwt.sign({ sub: String(user._id), role: user.role || 'user' }, process.env.JWT_SECRET, { expiresIn: '7d', issuer: 'milk-record-api' });
+};
+
 const validMobile = value => typeof value === 'string' && /^[0-9]{10}$/.test(value);
 const validMpin = value => typeof value === 'string' && /^[0-9]{5}$/.test(value);
 
@@ -14,8 +20,8 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Enter a valid name, 10-digit mobile number and 5-digit MPIN.' });
     }
     if (await User.findOne({ mobile })) return res.status(409).json({ message: 'User already exists.' });
-    await new User({ name, mobile, mpin: await bcrypt.hash(mpin, 12) }).save();
-    return res.status(201).json({ message: 'Registration successful!' });
+    const user = await new User({ name, mobile, mpin: await bcrypt.hash(mpin, 12) }).save();
+    return res.status(201).json({ message: 'Registration successful!', token: issueToken(user), userId: user._id, userRole: user.role || 'user', userName: user.name });
   } catch (err) {
     if (err.code === 11000) return res.status(409).json({ message: 'User already exists.' });
     console.error('Registration error:', err.message);
@@ -34,7 +40,7 @@ exports.login = async (req, res) => {
     const match = hashed ? await bcrypt.compare(mpin, user.mpin) : mpin === user.mpin;
     if (!match) return res.status(401).json({ message: 'Invalid credentials.' });
     if (!hashed) { user.mpin = await bcrypt.hash(mpin, 12); await user.save(); }
-    return res.json({ message: 'Login successful!', userId: user._id, userRole: user.role || 'user', userName: user.name });
+    return res.json({ message: 'Login successful!', token: issueToken(user), userId: user._id, userRole: user.role || 'user', userName: user.name });
   } catch (err) {
     console.error('Login error:', err.message);
     return res.status(500).json({ message: 'Server error.' });
