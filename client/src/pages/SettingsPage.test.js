@@ -14,8 +14,8 @@ describe('SettingsPage', () => {
       />
     );
 
-    fireEvent.change(screen.getByLabelText('Shop / Brand Name'), { target: { value: 'Ayush Dairy' } });
-    fireEvent.change(screen.getByLabelText('Default Milk Rate (₹ / Kg)'), { target: { value: '42.5' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. Shree Krishna Dairy'), { target: { value: 'Ayush Dairy' } });
+    fireEvent.change(screen.getByPlaceholderText('50.00'), { target: { value: '42.5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Liter (L)' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save All Configuration' }));
 
