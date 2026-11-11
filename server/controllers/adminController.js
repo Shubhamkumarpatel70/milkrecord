@@ -39,7 +39,7 @@ exports.getAllMilkRecords = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, mobile, mpin, upiId, isActive } = req.body;
+    const { name, mobile, mpin, upiId, isActive, shopName, milkRate, quantityUnit } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -54,6 +54,17 @@ exports.updateUser = async (req, res) => {
       user.mpin = await require('bcryptjs').hash(String(mpin), 12);
     }
     user.isActive = isActive;
+
+    // Update each dairy owner's independent business configuration when supplied.
+    if (shopName !== undefined || milkRate !== undefined || quantityUnit !== undefined) {
+      const nextShopName = String(shopName ?? user.businessProfile?.shopName ?? '').trim();
+      const nextRate = Number(milkRate ?? user.businessProfile?.milkRate ?? 50);
+      const nextUnit = String(quantityUnit ?? user.businessProfile?.quantityUnit ?? 'kg');
+      if (nextShopName.length > 100 || (nextShopName && nextShopName.length < 2) || !Number.isFinite(nextRate) || nextRate < 0 || nextRate > 100000 || !['kg', 'liter'].includes(nextUnit)) {
+        return res.status(400).json({ message: 'Invalid dairy name, milk rate or quantity unit.' });
+      }
+      user.businessProfile = { shopName: nextShopName, milkRate: nextRate, quantityUnit: nextUnit, isConfigured: Boolean(nextShopName) };
+    }
 
     // Update payment options
     if (!user.paymentOptions) {
