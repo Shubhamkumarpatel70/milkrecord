@@ -391,6 +391,7 @@ export default function CustomerManagementPage({
                     </div>
                   ))
               )}
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 pt-2">Only payments recorded after this feature is enabled appear as individual dated transactions. Earlier payment totals remain in the account, but their separate dates and remarks cannot be reconstructed.</p>
             </div>
             <div className="p-4 border-t border-slate-100 dark:border-slate-800">
               <button type="button" onClick={() => setTransactionCustomer(null)} className="w-full btn-secondary text-xs py-3">Close</button>
