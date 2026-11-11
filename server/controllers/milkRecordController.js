@@ -31,7 +31,7 @@ exports.createMilkRecord = async (req, res) => {
 // Get all users with name, month, total days, total amount
 exports.getAllUserSummaries = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -217,7 +217,8 @@ exports.getTotalMilkQuantity = async (req, res) => {
 
 exports.getCustomerDetails = async (req, res) => {
   try {
-    const { userId, month, customerName } = req.query; // month: YYYY-MM
+    const userId = String(req.authUser._id);
+    const { month, customerName } = req.query; // month: YYYY-MM
     console.log('getCustomerDetails userId:', userId, 'month:', month, 'customerName:', customerName);
     if (!month) return res.status(400).json({ message: 'month is required.' });
     

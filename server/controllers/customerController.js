@@ -23,7 +23,7 @@ exports.createCustomer = async (req, res) => {
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     if (!userId) {
       return res.status(400).json({ message: 'userId is required.' });
     }
@@ -39,7 +39,7 @@ exports.getAllCustomers = async (req, res) => {
 exports.getCustomerById = async (req, res) => {
   try {
     const { userId } = req.query;
-    const customer = await Customer.findById(req.params.id);
+    const customer = await Customer.findOne({ _id: req.params.id, user: req.authUser._id });
     
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -67,7 +67,7 @@ exports.verifyCustomerAccess = async (req, res) => {
     }
     
     // Find customer by ID and verify WhatsApp number
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({ _id: customerId, user: req.authUser._id });
     
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -104,7 +104,7 @@ exports.getCustomerRecords = async (req, res) => {
     }
     
     // Get customer details
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({ _id: customerId, user: req.authUser._id });
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
     }
