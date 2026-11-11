@@ -4,10 +4,12 @@ on:
   push:
     branches:
       - main
+      - master
       - improvements/security-and-stability
   pull_request:
     branches:
       - main
+      - master
 
 jobs:
   frontend-build:
