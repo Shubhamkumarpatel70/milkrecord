@@ -27,7 +27,6 @@ export default function Navbar({
   onNavigate,
   user,
   userRole,
-  unreadNotifications = 0,
   onOpenNotifications,
   syncStatus = null,
   onOpenSettings,
@@ -94,12 +93,9 @@ export default function Navbar({
             onClick={onOpenNotifications}
             className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-800"
             title="Notifications"
-            aria-label={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
+            aria-label="Notifications"
           >
             <Icon name="bell" />
-            {unreadNotifications > 0 && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-rose-500 dark:border-slate-950" />
-            )}
           </button>
 
           {user && (
