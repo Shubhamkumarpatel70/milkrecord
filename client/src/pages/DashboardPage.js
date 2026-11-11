@@ -51,7 +51,10 @@ function EmptyState({ title, detail }) {
 
 export default function DashboardPage({
   todaysMilkKg = 0,
+  todaysMilkLiter = 0,
   totalMilkQuantityKg = 0,
+  totalMilkQuantityLiter = 0,
+  quantityUnit = 'kg',
   totalRevenue = 0,
   totalReceive = 0,
   totalPending = 0,
@@ -81,12 +84,12 @@ export default function DashboardPage({
       };
     });
     const totals = new Map(days.map(day => [day.key, 0]));
-    (Array.isArray(records) ? records : []).forEach(record => {
+    (Array.isArray(records) ? records : []).filter(record => (record.quantityUnit || 'kg') === quantityUnit).forEach(record => {
       const key = localDateKey(record.createdAt);
       if (totals.has(key)) totals.set(key, totals.get(key) + (Number(record.quantityKg) || 0));
     });
     return days.map(day => ({ ...day, milk: Number(totals.get(day.key).toFixed(2)) }));
-  }, [records]);
+  }, [records, quantityUnit]);
 
   const hasWeeklyData = weeklyData.some(day => day.milk > 0);
   const topCustomers = useMemo(() => (
@@ -136,8 +139,8 @@ export default function DashboardPage({
       </section>
 
       <section aria-label="Business summary" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
-        <StatCard label="Today's collection" value={`${Number(todaysMilkKg || 0).toLocaleString('en-IN')} kg`} detail="Milk recorded today" icon={Milk} tone="sky" />
-        <StatCard label="Total milk recorded" value={`${Number(totalMilkQuantityKg || 0).toLocaleString('en-IN')} kg`} detail={`${totalRecords} entries recorded`} icon={TrendingUp} tone="emerald" />
+        <StatCard label="Today's collection" value={`${Number(quantityUnit === 'liter' ? todaysMilkLiter : todaysMilkKg).toLocaleString('en-IN')} ${quantityUnit === 'liter' ? 'L' : 'kg'}`} detail="Milk recorded today" icon={Milk} tone="sky" />
+        <StatCard label="Total milk recorded" value={`${Number(quantityUnit === 'liter' ? totalMilkQuantityLiter : totalMilkQuantityKg).toLocaleString('en-IN')} ${quantityUnit === 'liter' ? 'L' : 'kg'}`} detail={`${totalRecords} entries recorded`} icon={TrendingUp} tone="emerald" />
         <StatCard label="Total revenue" value={currency(totalRevenue)} detail={`Received ${currency(totalReceive)}`} icon={IndianRupee} tone="violet" />
         <StatCard label="Pending payments" value={currency(totalPending)} detail="Amount yet to be collected" icon={AlertCircle} tone="rose" />
       </section>
@@ -168,7 +171,7 @@ export default function DashboardPage({
                   <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
                   <Tooltip
                     labelFormatter={(label, payload) => payload?.[0]?.payload?.dateLabel || label}
-                    formatter={(value) => [`${value} kg`, 'Collection']}
+                    formatter={(value) => [`${value} ${quantityUnit === 'liter' ? 'L' : 'kg'}`, 'Collection']}
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#fff', fontSize: 12 }}
                   />
                   <Area type="monotone" dataKey="milk" stroke="#0284c7" strokeWidth={2.5} fill="url(#milkCollectionFill)" activeDot={{ r: 5 }} />
