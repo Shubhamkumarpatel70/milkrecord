@@ -174,16 +174,16 @@ export function MainAppContent() {
       if (Array.isArray(resCustomers.data)) {
         setTotalCustomers(resCustomers.data.length);
         const monthSummaries = (Array.isArray(resSummaries.data) ? resSummaries.data : []).filter(item => item.month === selectedMonth);
-        const summaryByName = new Map(monthSummaries.map(item => [item.name, item]));
+        const summaryById = new Map(monthSummaries.filter(item => item._id).map(item => [String(item._id), item]));
         setCustomers(resCustomers.data.map(customer => ({
-          ...summaryByName.get(customer.name),
+          ...summaryById.get(String(customer._id)),
           ...customer,
           name: customer.name,
           month: selectedMonth,
-          totalDays: summaryByName.get(customer.name)?.totalDays || 0,
-          totalAmount: summaryByName.get(customer.name)?.totalAmount || 0,
-          paidAmount: summaryByName.get(customer.name)?.paidAmount || 0,
-          status: summaryByName.get(customer.name)?.status || 'unpaid'
+          totalDays: summaryById.get(String(customer._id))?.totalDays || 0,
+          totalAmount: summaryById.get(String(customer._id))?.totalAmount || 0,
+          paidAmount: summaryById.get(String(customer._id))?.paidAmount || 0,
+          status: summaryById.get(String(customer._id))?.status || 'unpaid'
         })));
       }
 

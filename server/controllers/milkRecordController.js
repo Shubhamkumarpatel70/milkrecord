@@ -78,95 +78,68 @@ exports.updateMilkRecord = async (req, res) => {
 exports.getAllUserSummaries = async (req, res) => {
   try {
     const userId = String(req.authUser._id);
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required' });
-    }
+    const [userRecords, customerDocs] = await Promise.all([
+      MilkRecord.find({ user: userId }).sort({ createdAt: 1 }),
+      Customer.find({ user: userId }).select('_id name whatsapp')
+    ]);
 
-    // Get all milk records for this specific user
-    const userRecords = await MilkRecord.find({ user: userId });
-    
-    // Group records by customer and month
-    const customerMonthMap = {};
-    
+    const groups = new Map();
+    const ensureGroup = (key, details) => {
+      if (!groups.has(key)) groups.set(key, { ...details, months: new Map() });
+      return groups.get(key);
+    };
+
+    customerDocs.forEach(customer => {
+      ensureGroup(String(customer._id), {
+        customerId: String(customer._id),
+        name: customer.name,
+        whatsapp: customer.whatsapp || ''
+      });
+    });
+
     userRecords.forEach(record => {
-      const month = record.createdAt.toISOString().slice(0,7); // YYYY-MM
-      const customerName = record.customer;
-      
-      if (!customerMonthMap[customerName]) {
-        customerMonthMap[customerName] = {};
+      const key = record.customerId ? String(record.customerId) : `legacy:${record.customer}`;
+      const group = ensureGroup(key, {
+        customerId: record.customerId ? String(record.customerId) : null,
+        name: record.customer,
+        whatsapp: record.whatsapp || ''
+      });
+      const month = moment(record.createdAt).format('YYYY-MM');
+      if (!group.months.has(month)) {
+        group.months.set(month, { days: new Set(), totalAmount: 0, paidAmount: 0 });
       }
-      
-      if (!customerMonthMap[customerName][month]) {
-        customerMonthMap[customerName][month] = { 
-          days: new Set(), 
-          totalAmount: 0, 
-          paidAmount: 0,
-          records: []
-        };
-      }
-      
-      customerMonthMap[customerName][month].days.add(record.createdAt.toISOString().slice(0,10));
-      customerMonthMap[customerName][month].totalAmount += record.amount;
-      customerMonthMap[customerName][month].paidAmount += (record.paidAmount || 0);
-      customerMonthMap[customerName][month].records.push(record);
+      const summary = group.months.get(month);
+      summary.days.add(moment(record.createdAt).format('YYYY-MM-DD'));
+      summary.totalAmount += Number(record.amount || 0);
+      summary.paidAmount += Number(record.paidAmount || 0);
     });
-    
-    // Always include current month for all customers, even if no records exist
-    const now = new Date();
-    const currentMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2, '0')}`;
-    
-    // Get all customers that this user has records for
-    const customerNames = Object.keys(customerMonthMap);
 
-    // Fetch WhatsApp numbers for these customers (only for this user)
-    const customerDocs = await Customer.find({ 
-      name: { $in: customerNames },
-      user: userId 
-    });
-    const customerWhatsAppMap = {};
-    const customerIdMap = {};
-    customerDocs.forEach(c => { customerWhatsAppMap[c.name] = c.whatsapp; customerIdMap[c.name] = String(c._id); });
-
-    // For each customer, ensure current month exists
-    customerNames.forEach(customerName => {
-      if (!customerMonthMap[customerName][currentMonth]) {
-        customerMonthMap[customerName][currentMonth] = {
-          days: new Set(),
-          totalAmount: 0,
-          paidAmount: 0,
-          records: []
-        };
-      }
-    });
-    
-    // Convert to summary format
+    const currentMonth = moment().format('YYYY-MM');
     const summaries = [];
-    
-    Object.entries(customerMonthMap).forEach(([customerName, months]) => {
-      Object.entries(months).forEach(([month, data]) => {
-        const status = data.paidAmount >= data.totalAmount ? 'paid' : 'unpaid';
+    groups.forEach(group => {
+      if (!group.months.has(currentMonth)) {
+        group.months.set(currentMonth, { days: new Set(), totalAmount: 0, paidAmount: 0 });
+      }
+      group.months.forEach((data, month) => {
         summaries.push({
-          _id: customerIdMap[customerName] || null,
-          name: customerName,
-          whatsapp: customerWhatsAppMap[customerName] || '',
+          _id: group.customerId,
+          name: group.name,
+          whatsapp: group.whatsapp,
           month,
           totalDays: data.days.size,
-          totalAmount: data.totalAmount,
-          paidAmount: data.paidAmount,
-          status,
-          userId: userId // Use the logged-in user's ID
+          totalAmount: Math.round(data.totalAmount * 100) / 100,
+          paidAmount: Math.round(data.paidAmount * 100) / 100,
+          status: data.totalAmount > 0 && data.paidAmount >= data.totalAmount ? 'paid' : 'unpaid',
+          userId
         });
       });
     });
-    
-    // Sort by month (newest first)
-    summaries.sort((a, b) => b.month.localeCompare(a.month));
-    
-    res.json(summaries);
+
+    summaries.sort((a, b) => b.month.localeCompare(a.month) || a.name.localeCompare(b.name));
+    return res.json(summaries);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Get customer summaries error:', err);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
