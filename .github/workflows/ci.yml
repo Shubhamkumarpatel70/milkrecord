@@ -24,6 +24,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: client
         run: npm ci
+      - name: Run frontend tests
+        working-directory: client
+        run: npm test -- --watchAll=false --runInBand
       - name: Build frontend
         working-directory: client
         run: npm run build
