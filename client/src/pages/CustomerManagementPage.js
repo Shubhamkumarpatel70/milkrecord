@@ -150,7 +150,7 @@ export default function CustomerManagementPage({
               const recordName = typeof record.customer === 'object'
                 ? record.customer?.name
                 : (record.customerName || record.customer);
-              if (recordName) return String(recordName).trim().toLowerCase() === String(cust.name || '').trim().toLowerCase();
+              if (recordName) return String(recordName).trim() === String(cust.name || '').trim();
               const recordCustomerId = String(record.customerId?._id || record.customerId || '');
               return Boolean(cust._id && recordCustomerId === String(cust._id));
             });
