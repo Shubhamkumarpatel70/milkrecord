@@ -1,207 +1,99 @@
 const User = require('../models/User');
 const Customer = require('../models/Customer');
 const QRCode = require('qrcode');
+const bcrypt = require('bcryptjs');
+const validMobile = value => typeof value === 'string' && /^[0-9]{10}$/.test(value);
+const validMpin = value => typeof value === 'string' && /^[0-9]{5}$/.test(value);
 
 exports.register = async (req, res) => {
   try {
-    const { name, mobile, mpin } = req.body;
-    if (!name || !mobile || !mpin) {
-      return res.status(400).json({ message: 'All fields are required.' });
+    const name = String(req.body.name || '').trim();
+    const mobile = String(req.body.mobile || '').trim();
+    const mpin = String(req.body.mpin || '');
+    if (name.length < 2 || name.length > 80 || !validMobile(mobile) || !validMpin(mpin)) {
+      return res.status(400).json({ message: 'Enter a valid name, 10-digit mobile number and 5-digit MPIN.' });
     }
-    
-    const existingUser = await User.findOne({ mobile });
-    if (existingUser) {
-      return res.status(400).json({ message: 'User already exists.' });
-    }
-    
-    // Store MPIN in plain text (no hashing)
-    const user = new User({ name, mobile, mpin });
-    await user.save();
-    
-    res.status(201).json({ message: 'Registration successful!' });
+    if (await User.findOne({ mobile })) return res.status(409).json({ message: 'User already exists.' });
+    await new User({ name, mobile, mpin: await bcrypt.hash(mpin, 12) }).save();
+    return res.status(201).json({ message: 'Registration successful!' });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error.' });
+    if (err.code === 11000) return res.status(409).json({ message: 'User already exists.' });
+    console.error('Registration error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
 exports.login = async (req, res) => {
   try {
-    const { mobile, mpin } = req.body;
-    console.log('Login attempt:', { mobile, mpin });
-    
-    if (!mobile || !mpin) {
-      console.log('Missing mobile or mpin');
-      return res.status(400).json({ message: 'Mobile and MPIN are required.' });
-    }
-    
+    const mobile = String(req.body.mobile || '').trim();
+    const mpin = String(req.body.mpin || '');
+    if (!validMobile(mobile) || !validMpin(mpin)) return res.status(400).json({ message: 'Enter a valid mobile number and 5-digit MPIN.' });
     const user = await User.findOne({ mobile });
-    console.log('User found:', user ? { name: user.name, mobile: user.mobile, mpin: user.mpin } : 'No user found');
-    
-    if (!user) {
-      console.log('No user found with mobile:', mobile);
-      return res.status(400).json({ message: 'Invalid credentials.' });
-    }
-    
-    // Direct comparison for plain text MPIN
-    const isMatch = mpin === user.mpin;
-    console.log('MPIN comparison:', { provided: mpin, stored: user.mpin, isMatch });
-    
-    if (!isMatch) {
-      console.log('MPIN does not match');
-      return res.status(400).json({ message: 'Invalid credentials.' });
-    }
-    
-    // Check if user is active
-    if (user.isActive === false) {
-      console.log('Login failed - user is disabled:', user.name);
-      return res.status(400).json({ message: 'Account is disabled. Please contact administrator.' });
-    }
-
-    console.log('Login successful for user:', user.name, 'Role:', user.role || 'user');
-    res.json({
-      message: 'Login successful!',
-      userId: user._id,
-      userRole: user.role || 'user',
-      userName: user.name
-    });
+    if (!user || user.isActive === false) return res.status(401).json({ message: 'Invalid credentials or disabled account.' });
+    const hashed = /^\$2[aby]\$/.test(user.mpin);
+    const match = hashed ? await bcrypt.compare(mpin, user.mpin) : mpin === user.mpin;
+    if (!match) return res.status(401).json({ message: 'Invalid credentials.' });
+    if (!hashed) { user.mpin = await bcrypt.hash(mpin, 12); await user.save(); }
+    return res.json({ message: 'Login successful!', userId: user._id, userRole: user.role || 'user', userName: user.name });
   } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Login error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
 exports.customerLogin = async (req, res) => {
   try {
-    const { whatsapp } = req.body;
-    console.log('Customer login attempt with WhatsApp:', whatsapp);
-    
-    if (!whatsapp) {
-      return res.status(400).json({ message: 'WhatsApp number is required.' });
-    }
-    
-    // Find customer by WhatsApp number (search across all users)
-    const customer = await Customer.findOne({ whatsapp: whatsapp });
-    console.log('Customer found:', customer ? { name: customer.name, whatsapp: customer.whatsapp, userId: customer.user } : 'No customer found');
-    
-    if (!customer) {
-      console.log('No customer found with WhatsApp:', whatsapp);
-      return res.status(400).json({ message: 'Customer not found.' });
-    }
-    
-    res.json({
-      success: true,
-      message: 'Login successful!',
-      customer: {
-        _id: customer._id,
-        name: customer.name,
-        whatsapp: customer.whatsapp,
-        userId: customer.user // Include the user ID for milk record queries
-      }
-    });
+    const whatsapp = String(req.body.whatsapp || '').trim();
+    if (!validMobile(whatsapp)) return res.status(400).json({ message: 'Enter a valid 10-digit WhatsApp number.' });
+    const matches = await Customer.find({ whatsapp }).limit(2);
+    if (!matches.length) return res.status(404).json({ message: 'Customer not found.' });
+    if (matches.length > 1) return res.status(409).json({ message: 'This number is linked to multiple accounts. Contact the dairy owner.' });
+    const customer = matches[0];
+    return res.json({ success: true, message: 'Login successful!', customer: { _id: customer._id, name: customer.name, whatsapp: customer.whatsapp, userId: customer.user } });
   } catch (err) {
-    console.error('Customer login error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Customer login error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
-// Add payment option
 exports.addPaymentOption = async (req, res) => {
   try {
-    const { userId, upiId } = req.body;
-    
-    if (!userId || !upiId) {
-      return res.status(400).json({ message: 'User ID and UPI ID are required.' });
-    }
-    
-    // Validate UPI ID format (basic validation)
-    const upiRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/;
-    if (!upiRegex.test(upiId)) {
-      return res.status(400).json({ message: 'Please enter a valid UPI ID (e.g., username@bank).' });
-    }
-    
+    const { userId } = req.body;
+    const upiId = String(req.body.upiId || '').trim();
+    if (!userId || !/^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/.test(upiId)) return res.status(400).json({ message: 'Enter a valid UPI ID and user ID.' });
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    
+    if (!user) return res.status(404).json({ message: 'User not found.' });
     user.paymentOptions.upiId = upiId;
     user.paymentOptions.hasPaymentOption = true;
     await user.save();
-    
-    res.json({ 
-      message: 'Payment option added successfully!',
-      paymentOptions: user.paymentOptions
-    });
+    return res.json({ message: 'Payment option added successfully!', paymentOptions: user.paymentOptions });
   } catch (err) {
-    console.error('Add payment option error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Add payment option error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
   }
 };
 
-// Get payment option
 exports.getPaymentOption = async (req, res) => {
   try {
-    const { userId } = req.params;
-    
-    if (!userId) {
-      return res.status(400).json({ message: 'User ID is required.' });
-    }
-    
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    
-    res.json({ 
-      paymentOptions: user.paymentOptions
-    });
-  } catch (err) {
-    console.error('Get payment option error:', err);
-    res.status(500).json({ message: 'Server error.' });
-  }
+    const user = await User.findById(req.params.userId).select('paymentOptions');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    return res.json({ paymentOptions: user.paymentOptions });
+  } catch (err) { return res.status(400).json({ message: 'Invalid user ID.' }); }
 };
 
-// Generate QR code for payment
 exports.generatePaymentQR = async (req, res) => {
   try {
-    const { userId, amount } = req.body;
-    
-    if (!userId || !amount) {
-      return res.status(400).json({ message: 'User ID and amount are required.' });
-    }
-    
+    const { userId } = req.body;
+    const amount = Number(req.body.amount);
+    if (!userId || !Number.isFinite(amount) || amount <= 0 || amount > 10000000) return res.status(400).json({ message: 'Enter a valid payment amount.' });
     const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: 'User not found.' });
-    }
-    
-    if (!user.paymentOptions.hasPaymentOption || !user.paymentOptions.upiId) {
-      return res.status(400).json({ message: 'Payment option not configured.' });
-    }
-    
-    // Generate UPI payment URL
-    const upiUrl = `upi://pay?pa=${user.paymentOptions.upiId}&pn=${encodeURIComponent(user.name)}&am=${amount}&cu=INR&tn=Milk Payment`;
-    
-    // Generate QR code as data URL
-    const qrCodeDataUrl = await QRCode.toDataURL(upiUrl, {
-      width: 300,
-      margin: 2,
-      color: {
-        dark: '#000000',
-        light: '#FFFFFF'
-      }
-    });
-    
-    res.json({ 
-      upiUrl: upiUrl,
-      qrCodeDataUrl: qrCodeDataUrl,
-      upiId: user.paymentOptions.upiId,
-      userName: user.name,
-      amount: amount
-    });
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    if (!user.paymentOptions?.hasPaymentOption || !user.paymentOptions?.upiId) return res.status(400).json({ message: 'Payment option not configured.' });
+    const upiUrl = `upi://pay?pa=${encodeURIComponent(user.paymentOptions.upiId)}&pn=${encodeURIComponent(user.name)}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent('Milk Payment')}`;
+    const qrCodeDataUrl = await QRCode.toDataURL(upiUrl, { width: 300, margin: 2 });
+    return res.json({ upiUrl, qrCodeDataUrl, upiId: user.paymentOptions.upiId, userName: user.name, amount });
   } catch (err) {
-    console.error('Generate payment QR error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    console.error('Generate payment QR error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
   }
-}; 
+};

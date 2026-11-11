@@ -191,3 +191,18 @@ exports.getCustomerRecords = async (req, res) => {
     res.status(500).json({ message: 'Server error.' });
   }
 }; 
+
+exports.deleteCustomer = async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ message: 'userId is required.' });
+    const customer = await Customer.findOne({ _id: req.params.customerId, user: userId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+    await MilkRecord.deleteMany({ user: userId, customer: customer.name });
+    await customer.deleteOne();
+    return res.json({ message: 'Customer and associated milk records deleted successfully.' });
+  } catch (err) {
+    console.error('Delete customer error:', err.message);
+    return res.status(400).json({ message: 'Unable to delete customer.' });
+  }
+};

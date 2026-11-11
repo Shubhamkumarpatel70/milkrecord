@@ -5,6 +5,7 @@ const customerController = require('../controllers/customerController');
 router.post('/', customerController.createCustomer);
 router.get('/', customerController.getAllCustomers);
 router.get('/:id', customerController.getCustomerById);
+router.delete('/:customerId', customerController.deleteCustomer);
 
 // New routes for customer verification and records
 router.post('/:customerId/verify', customerController.verifyCustomerAccess);

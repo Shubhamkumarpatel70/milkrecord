@@ -49,7 +49,10 @@ exports.updateUser = async (req, res) => {
     // Update basic fields
     user.name = name;
     user.mobile = mobile;
-    if (mpin) user.mpin = mpin;
+    if (mpin) {
+      if (!/^[0-9]{5}$/.test(String(mpin))) return res.status(400).json({ message: 'MPIN must be exactly 5 digits.' });
+      user.mpin = await require('bcryptjs').hash(String(mpin), 12);
+    }
     user.isActive = isActive;
 
     // Update payment options

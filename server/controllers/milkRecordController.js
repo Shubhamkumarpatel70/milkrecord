@@ -5,18 +5,21 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, user, whatsapp } = req.body;
-    if (!customer || !quantityKg || !amount || !user) {
-      return res.status(400).json({ message: 'Customer, quantity in kg, amount, and user are required.' });
+    const { customer, quantityKg, amount, user, whatsapp, createdAt } = req.body;
+    const quantity = Number(quantityKg), totalAmount = Number(amount);
+    if (!String(customer || '').trim() || !user || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0) {
+      return res.status(400).json({ message: 'Enter a customer, valid user, positive quantity and non-negative amount.' });
     }
+    const entryDate = createdAt ? new Date(createdAt) : new Date();
+    if (Number.isNaN(entryDate.getTime()) || entryDate > new Date(Date.now() + 5 * 60 * 1000)) return res.status(400).json({ message: 'Invalid milk record date.' });
     
     // Verify that the customer belongs to the user
-    const customerDoc = await Customer.findOne({ name: customer, user: user });
+    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: user });
     if (!customerDoc) {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer, quantityKg, amount, user, whatsapp });
+    const record = new MilkRecord({ customer: String(customer).trim(), quantityKg: quantity, amount: totalAmount, user, whatsapp: whatsapp || customerDoc.whatsapp, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {
@@ -127,31 +130,18 @@ exports.getAllCustomers = async (req, res) => {
       return res.status(400).json({ message: 'User ID is required' });
     }
     
-    console.log('=== getAllCustomers Debug ===');
-    console.log('Requested userId:', userId);
-    
     // Get all milk records for this user to find their customers
     const userRecords = await MilkRecord.find({ user: userId });
-    console.log('User records found:', userRecords.length);
-    console.log('User records:', userRecords.map(r => ({ customer: r.customer, amount: r.amount, date: r.createdAt })));
     
     // Extract unique customer names from the user's records
     const customerNames = [...new Set(userRecords.map(record => record.customer))];
-    console.log('Unique customer names from user records:', customerNames);
     
     // Get customer details for these customers (only for this user)
     const customers = await Customer.find({ 
       name: { $in: customerNames },
       user: userId 
     }, '_id name');
-    console.log('Customers found in database:', customers.length, customers.map(c => c.name));
-    
-    // Also check all customers in database for comparison
-    const allCustomers = await Customer.find({}, '_id name');
-    console.log('All customers in database:', allCustomers.length, allCustomers.map(c => c.name));
-    
-    console.log('=== End Debug ===');
-    
+        
     res.json(customers);
   } catch (err) {
     console.error(err);
@@ -351,23 +341,20 @@ exports.getCustomerDetails = async (req, res) => {
 
 exports.updateMilkRecordStatus = async (req, res) => {
   try {
-    const { recordId, status, paidAmount } = req.body;
-    console.log('Updating record:', recordId, 'with status:', status, 'paidAmount:', paidAmount);
-    
+    const { recordId, status, paidAmount, userId } = req.body;
+        
     if (!recordId) {
       return res.status(400).json({ message: 'Record ID is required.' });
     }
     
-    const record = await MilkRecord.findById(recordId);
+    const record = await MilkRecord.findOne({ _id: recordId, ...(userId ? { user: userId } : {}) });
     if (!record) return res.status(404).json({ message: 'Record not found.' });
     
-    // Update the record with the provided values
-    if (status !== undefined) {
-      record.status = status;
-    }
-    if (paidAmount !== undefined) {
-      record.paidAmount = paidAmount;
-    }
+    if (status !== undefined && !['paid', 'unpaid'].includes(status)) return res.status(400).json({ message: 'Invalid payment status.' });
+    if (paidAmount !== undefined && (!Number.isFinite(Number(paidAmount)) || Number(paidAmount) < 0 || Number(paidAmount) > record.amount)) return res.status(400).json({ message: 'Paid amount must be between zero and the record amount.' });
+    if (paidAmount !== undefined) record.paidAmount = Number(paidAmount);
+    else if (status === 'paid') record.paidAmount = record.amount;
+    else if (status === 'unpaid') record.paidAmount = 0;
     
     // Ensure status is consistent with paid amount
     if (record.paidAmount >= record.amount) {
@@ -377,8 +364,7 @@ exports.updateMilkRecordStatus = async (req, res) => {
       record.status = 'unpaid';
     }
     
-    console.log('Saving record with status:', record.status, 'paidAmount:', record.paidAmount);
-    await record.save();
+        await record.save();
     
     res.json({ message: 'Status updated.', record });
   } catch (err) {
@@ -390,14 +376,14 @@ exports.updateMilkRecordStatus = async (req, res) => {
 // Customer payment functionality
 exports.customerPayment = async (req, res) => {
   try {
-    const { customerId, amount, month } = req.body;
+    const { customerId, amount, month, userId } = req.body;
     
-    if (!customerId || !amount || !month) {
+    if (!customerId || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !/^\\d{4}-\\d{2}$/.test(String(month)) || !userId) {
       return res.status(400).json({ message: 'Customer ID, amount, and month are required.' });
     }
     
     // Find the customer
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({ _id: customerId, user: userId });
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
     }
@@ -408,6 +394,7 @@ exports.customerPayment = async (req, res) => {
     
     const records = await MilkRecord.find({
       customer: customer.name,
+      user: userId,
       createdAt: { $gte: start.toDate(), $lte: end.toDate() }
     });
     
