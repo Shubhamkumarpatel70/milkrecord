@@ -479,6 +479,7 @@ export function MainAppContent() {
               businessProfile={businessProfile}
               upiId={upiId}
               onSaveConfiguration={handleSaveConfiguration}
+              onStartTour={() => setShowTour(true)}
             />
           )}
 
