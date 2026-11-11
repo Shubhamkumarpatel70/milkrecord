@@ -88,14 +88,14 @@ export default function Navbar({
         </div>
 
         <div className="flex shrink-0 items-center gap-1 sm:gap-2">
-          <span
+          {syncStatus && <span
             className="mr-1 flex h-8 items-center gap-1.5 rounded-full px-2 text-[11px] font-medium text-slate-500 dark:text-slate-400"
             title={syncStatus === 'syncing' ? 'Syncing data' : syncStatus === 'offline' ? 'You are offline' : 'All changes synced'}
             aria-label={syncStatus === 'syncing' ? 'Syncing data' : syncStatus === 'offline' ? 'Offline' : 'Synced'}
           >
             <span className={`h-2 w-2 rounded-full ${syncStatus === 'syncing' ? 'animate-pulse bg-amber-500' : syncStatus === 'offline' ? 'bg-rose-500' : 'bg-emerald-500'}`} />
             <span className="hidden lg:inline">{syncStatus === 'syncing' ? 'Syncing' : syncStatus === 'offline' ? 'Offline' : 'Synced'}</span>
-          </span>
+          </span>}
 
           <button
             type="button"
