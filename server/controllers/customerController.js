@@ -38,7 +38,7 @@ exports.getAllCustomers = async (req, res) => {
 
 exports.getCustomerById = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     const customer = await Customer.findOne({ _id: req.params.id, user: req.authUser._id });
     
     if (!customer) {
@@ -194,7 +194,7 @@ exports.getCustomerRecords = async (req, res) => {
 
 exports.deleteCustomer = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     if (!userId) return res.status(400).json({ message: 'userId is required.' });
     const customer = await Customer.findOne({ _id: req.params.customerId, user: userId });
     if (!customer) return res.status(404).json({ message: 'Customer not found.' });

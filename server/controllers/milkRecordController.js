@@ -124,7 +124,7 @@ exports.getAllUserSummaries = async (req, res) => {
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -152,7 +152,7 @@ exports.getAllCustomers = async (req, res) => {
 // Get today's total milk quantity across all customers
 exports.getTodaysMilkQuantity = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
@@ -191,7 +191,7 @@ exports.getTodaysMilkQuantity = async (req, res) => {
 // Get total milk quantity across all records (all-time)
 exports.getTotalMilkQuantity = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     
     if (!userId) {
       return res.status(400).json({ message: 'User ID is required' });
