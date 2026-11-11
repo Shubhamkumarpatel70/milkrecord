@@ -432,6 +432,8 @@ export function MainAppContent() {
               isDarkMode={isDarkMode}
               onToggleDarkMode={handleToggleDarkMode}
               upiId={upiId}
+              customers={customers}
+              records={records}
               onSaveUpiId={handleSaveUpiId}
             />
           )}
@@ -646,11 +648,11 @@ export function MainAppContent() {
                 onClick={async () => {
                   if (isAuthenticated && showPaymentSettleModal._id) {
                     try {
-                      await axios.put('/api/milk-records/status', {
-                        recordId: showPaymentSettleModal._id,
-                        userId: localStorage.getItem('userId'),
-                        status: 'paid',
-                        paidAmount: showPaymentSettleModal.totalAmount
+                      const remaining = Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0));
+                      await axios.post('/api/milk-records/payment', {
+                        customerId: showPaymentSettleModal._id,
+                        amount: remaining,
+                        month: showPaymentSettleModal.month
                       });
                     } catch (err) {}
                   }

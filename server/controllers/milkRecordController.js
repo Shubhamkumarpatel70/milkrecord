@@ -79,7 +79,8 @@ exports.getAllUserSummaries = async (req, res) => {
       user: userId 
     });
     const customerWhatsAppMap = {};
-    customerDocs.forEach(c => { customerWhatsAppMap[c.name] = c.whatsapp; });
+    const customerIdMap = {};
+    customerDocs.forEach(c => { customerWhatsAppMap[c.name] = c.whatsapp; customerIdMap[c.name] = String(c._id); });
 
     // For each customer, ensure current month exists
     customerNames.forEach(customerName => {
@@ -100,6 +101,7 @@ exports.getAllUserSummaries = async (req, res) => {
       Object.entries(months).forEach(([month, data]) => {
         const status = data.paidAmount >= data.totalAmount ? 'paid' : 'unpaid';
         summaries.push({
+          _id: customerIdMap[customerName] || null,
           name: customerName,
           whatsapp: customerWhatsAppMap[customerName] || '',
           month,

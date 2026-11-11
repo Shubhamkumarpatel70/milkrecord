@@ -6,6 +6,8 @@ export default function SettingsPage({
   isDarkMode,
   onToggleDarkMode,
   upiId = '',
+  customers = [],
+  records = [],
   onSaveUpiId
 }) {
   const { language, setLanguage, defaultMilkRate, setDefaultMilkRate } = useSettings();
@@ -13,6 +15,19 @@ export default function SettingsPage({
   const [currentUpiId, setCurrentUpiId] = useState(upiId);
   const [paperSize, setPaperSize] = useState('58mm'); // '58mm' | '80mm' | 'A4'
   const [savedMsg, setSavedMsg] = useState('');
+
+  const handleDownloadBackup = () => {
+    const backup = { app: 'Milk Record', exportedAt: new Date().toISOString(), customers, milkRecords: records };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `milk-record-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
 
   const handleSaveSettings = async (e) => {
     e.preventDefault();
@@ -186,11 +201,11 @@ export default function SettingsPage({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
             <div>
               <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Cloud & Local Backup</h4>
-              <p className="text-[11px] text-slate-500">Your milk records auto-sync with MongoDB Atlas servers.</p>
+              <p className="text-[11px] text-slate-500">Download a copy of the records currently loaded in this browser. Keep a separate secure backup regularly.</p>
             </div>
             <button
               type="button"
-              onClick={() => alert('Local database backup file downloaded.')}
+              onClick={handleDownloadBackup}
               className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 min-h-[38px] w-full sm:w-auto justify-center"
             >
               <Database className="w-4 h-4" />
