@@ -409,7 +409,7 @@ exports.customerPayment = async (req, res) => {
         !/^[0-9]{4}-[0-9]{2}$/.test(String(month || '')) ||
         Number.isNaN(transactionDate.getTime()) ||
         (paymentDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate))) ||
-        transactionDate > new Date(Date.now() + 5 * 60 * 1000) ||
+        (paymentDate && moment(paymentDate).isAfter(moment().utcOffset(330).format('YYYY-MM-DD'))) ||
         cleanRemark.length > 500) {
       return res.status(400).json({ message: 'Enter a valid customer, amount, payment date, month and remark (maximum 500 characters).' });
     }
