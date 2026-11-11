@@ -65,7 +65,8 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
-    res.json({ message: 'User updated successfully.', user });
+    const safeUser = await User.findById(user._id).select('-mpin');
+    res.json({ message: 'User updated successfully.', user: safeUser });
   } catch (err) {
     console.error('Error updating user:', err);
     res.status(500).json({ message: 'Server error.' });

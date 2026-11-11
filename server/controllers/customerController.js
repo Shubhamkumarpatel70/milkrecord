@@ -109,8 +109,8 @@ exports.getCustomerRecords = async (req, res) => {
     const { customerId } = req.params;
     const { month } = req.query;
     
-    if (!month) {
-      return res.status(400).json({ message: 'Month parameter is required (YYYY-MM format).' });
+    if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
+      return res.status(400).json({ message: 'Month parameter must use YYYY-MM format.' });
     }
     
     // Get customer details
