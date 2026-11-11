@@ -81,7 +81,7 @@ exports.addPaymentOption = async (req, res) => {
 
 exports.getPaymentOption = async (req, res) => {
   try {
-    const user = await User.findById(req.params.userId).select('paymentOptions');
+    const user = await User.findById(req.authUser._id).select('paymentOptions');
     if (!user) return res.status(404).json({ message: 'User not found.' });
     return res.json({ paymentOptions: user.paymentOptions });
   } catch (err) { return res.status(400).json({ message: 'Invalid user ID.' }); }

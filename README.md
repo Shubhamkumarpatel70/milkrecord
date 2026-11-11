@@ -94,11 +94,13 @@ Create `.env` file in the server directory:
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/milkrecord
-JWT_SECRET=your_jwt_secret_here
+JWT_SECRET=replace_with_a_random_secret_at_least_32_characters
 NODE_ENV=development
 ```
 
-### 4. Start the Application
+#**Important:** Set `JWT_SECRET` in the Render backend environment variables to a random secret of at least 32 characters. Do not commit the real secret to Git. Login and registration issue 7-day signed sessions; owner APIs require a valid session and admin APIs additionally require the `admin` role. Existing users must sign in again after this update. The customer-facing WhatsApp-only access flow is not considered secure and must not be enabled for real customer records until OTP verification is integrated.
+
+## 4. Start the Application
 
 #### Start Backend Server
 

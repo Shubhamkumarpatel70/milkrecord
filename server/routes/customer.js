@@ -9,9 +9,9 @@ router.get('/', authenticate, customerController.getAllCustomers);
 router.get('/:id', authenticate, customerController.getCustomerById);
 router.delete('/:customerId', authenticate, customerController.deleteCustomer);
 
-// Customer-facing endpoints are intentionally separate from owner APIs.
-// Phone-number-only customer verification is not strong authentication.
-router.post('/:customerId/verify', customerController.verifyCustomerAccess);
-router.get('/:customerId/records', customerController.getCustomerRecords);
+// Customer data endpoints also require an authenticated owner session.
+// Public customer access is disabled until OTP-based identity verification is implemented.
+router.post('/:customerId/verify', authenticate, customerController.verifyCustomerAccess);
+router.get('/:customerId/records', authenticate, customerController.getCustomerRecords);
 
 module.exports = router;
