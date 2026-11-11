@@ -12,22 +12,22 @@ export default function AuthScreen({ onAuthenticated }) {
   const submit = async (event) => {
     event.preventDefault();
     setError('');
-    if (!/^[0-9]{10}$/.test(mobile)) return setError('10-digit mobile number enter karein.');
+    if (!/^[0-9]{10}$/.test(mobile)) return setError('Please enter a 10-digit mobile number.');
     if (mode !== 'customer' && !/^[0-9]{5}$/.test(mpin)) return setError('MPIN exactly 5 digits ka hona chahiye.');
-    if (mode === 'register' && name.trim().length < 2) return setError('Apna valid naam enter karein.');
+    if (mode === 'register' && name.trim().length < 2) return setError('Please enter a valid name.');
     setBusy(true);
     try {
       const endpoint = mode === 'customer' ? '/api/auth/customer-login' : (mode === 'login' ? '/api/auth/login' : '/api/auth/register');
       const response = await axios.post(endpoint, mode === 'customer' ? { mobile } : { name: name.trim(), mobile, mpin });
       const data = response.data;
-      if (!data.token || !data.userId) throw new Error('Server response mein session token nahi mila.');
+      if (!data.token || !data.userId) throw new Error('The server did not return a session token.');
       localStorage.setItem('authToken', data.token);
       localStorage.setItem('userId', data.userId);
       localStorage.setItem('userRole', data.userRole || 'user');
       localStorage.setItem('userName', data.userName || name.trim());
       onAuthenticated({ _id: data.userId, name: data.userName || name.trim(), role: data.userRole || 'user' });
     } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Sign in nahi ho paya. Dobara try karein.');
+      setError(err.response?.data?.message || err.message || 'We could not sign you in. Please try again.');
     } finally {
       setBusy(false);
     }
