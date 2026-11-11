@@ -645,35 +645,50 @@ export function MainAppContent() {
       {showPaymentSettleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800">
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Mark Payment Settle</h3>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Record Customer Payment</h3>
             <p className="text-xs text-slate-500 mb-4">Customer: <strong className="text-sky-600">{showPaymentSettleModal.name}</strong></p>
-            <div className="space-y-3 text-xs mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
+            <div className="space-y-3 text-xs mb-5 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
               <div className="flex justify-between"><span>Total Amount:</span><span className="font-bold">₹{showPaymentSettleModal.totalAmount || 0}</span></div>
               <div className="flex justify-between"><span>Paid Amount:</span><span className="font-bold text-emerald-600">₹{showPaymentSettleModal.paidAmount || 0}</span></div>
               <div className="flex justify-between border-t pt-2"><span>Remaining Dues:</span><span className="font-bold text-rose-600">₹{Math.max(0, (showPaymentSettleModal.totalAmount || 0) - (showPaymentSettleModal.paidAmount || 0))}</span></div>
             </div>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Amount received (₹)</label>
+              <input
+                type="number"
+                min="0.01"
+                max={Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0))}
+                step="0.01"
+                value={settlementAmount}
+                onChange={e => setSettlementAmount(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowPaymentSettleModal(null)} className="btn-secondary text-xs py-2 px-4">Cancel</button>
+              <button onClick={() => { setShowPaymentSettleModal(null); setSettlementAmount(''); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
               <button
                 onClick={async () => {
-                  if (isAuthenticated && showPaymentSettleModal._id) {
-                    try {
-                      const amountToRecord = Number(settlementAmount);
-                      const remaining = Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0));
-                      if (!Number.isFinite(amountToRecord) || amountToRecord <= 0 || amountToRecord > remaining) {
-                        alert('Enter a valid amount within the remaining balance.');
-                        return;
-                      }
-                      await axios.post('/api/milk-records/payment', {
-                        customerId: showPaymentSettleModal._id,
-                        amount: amountToRecord,
-                        month: showPaymentSettleModal.month
-                      });
-                    } catch (err) {}
+                  const amountToRecord = Math.round(Number(settlementAmount) * 100) / 100;
+                  const remaining = Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0));
+                  if (!showPaymentSettleModal._id || !Number.isFinite(amountToRecord) || amountToRecord <= 0 || amountToRecord > remaining) {
+                    alert('Enter a valid amount within the remaining balance.');
+                    return;
+                  }
+                  try {
+                    await axios.post('/api/milk-records/payment', {
+                      customerId: showPaymentSettleModal._id,
+                      amount: amountToRecord,
+                      month: showPaymentSettleModal.month
+                    });
+                  } catch (err) {
+                    alert(err.response?.data?.message || 'Payment could not be recorded. Please try again.');
+                    return;
                   }
                   setShowPaymentSettleModal(null);
-                  refreshData();
-                  alert(`Payment marked as settled for ${showPaymentSettleModal.name}!`);
+                  setSettlementAmount('');
+                  await refreshData();
+                  alert(`Payment of ₹${amountToRecord.toFixed(2)} recorded for ${showPaymentSettleModal.name}.`);
                 }}
                 className="btn-primary text-xs py-2 px-5"
                 disabled={!settlementAmount || Number(settlementAmount) <= 0 || Number(settlementAmount) > Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0))}
