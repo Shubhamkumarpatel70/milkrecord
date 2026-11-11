@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Settings, Store, Milk, QrCode, ExternalLink, Save, Check, CircleHelp, MessageCircle, BookOpen, ShieldCheck } from 'lucide-react';
 
-export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveConfiguration }) {
+export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveConfiguration, onStartTour }) {
   const [shopName, setShopName] = useState(businessProfile.shopName || '');
   const [milkRate, setMilkRate] = useState(String(businessProfile.milkRate ?? 50));
   const [quantityUnit, setQuantityUnit] = useState(businessProfile.quantityUnit || 'kg');
@@ -69,7 +69,7 @@ export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveC
           <p className="mt-2 text-sm text-slate-500">Milk Record use karne mein help chahiye? Product tour dekhein ya ASKC Technologies support se contact karein.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <a href="https://askctechnologies.in" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:border-sky-300 hover:bg-sky-50"><BookOpen className="h-5 w-5 text-sky-600"/><span><strong className="block text-sm text-slate-800">Help & product info</strong><small className="text-xs text-slate-500">Guides and product updates</small></span><ExternalLink className="ml-auto h-4 w-4 text-slate-400"/></a>
-            <a href="https://wa.me/?text=Hello%20ASKC%20Technologies%2C%20I%20need%20help%20with%20Milk%20Record." target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50"><MessageCircle className="h-5 w-5 text-emerald-600"/><span><strong className="block text-sm text-slate-800">Contact support</strong><small className="text-xs text-slate-500">Open WhatsApp support message</small></span><ExternalLink className="ml-auto h-4 w-4 text-slate-400"/></a>
+            <button type="button" onClick={onStartTour} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-emerald-300 hover:bg-emerald-50"><MessageCircle className="h-5 w-5 text-emerald-600"/><span><strong className="block text-sm text-slate-800">Start guided product tour</strong><small className="text-xs text-slate-500">Step-by-step walkthrough of the app</small></span></button>
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-slate-400"><ShieldCheck className="h-4 w-4 shrink-0"/>Your business configuration is saved to your signed-in dairy account.</p>
         </section>
