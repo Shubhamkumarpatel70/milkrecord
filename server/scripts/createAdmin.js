@@ -1,47 +1,35 @@
 const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 require('dotenv').config();
 
 async function createAdmin() {
-  try {
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/milk-record');
-    console.log('Connected to MongoDB');
-
-    // Check if admin already exists
-    const existingAdmin = await User.findOne({ role: 'admin' });
-    if (existingAdmin) {
-      console.log('Admin user already exists:');
-      console.log('Name:', existingAdmin.name);
-      console.log('Mobile:', existingAdmin.mobile);
-      console.log('Role:', existingAdmin.role);
-      return;
-    }
-
-    // Create admin user
-    const adminUser = new User({
-      name: 'Admin',
-      mobile: '9999999999',
-      mpin: '12345',
-      role: 'admin',
-      isActive: true
-    });
-
-    await adminUser.save();
-    console.log('Admin user created successfully!');
-    console.log('Name:', adminUser.name);
-    console.log('Mobile:', adminUser.mobile);
-    console.log('MPIN:', adminUser.mpin);
-    console.log('Role:', adminUser.role);
-    console.log('\nYou can now login with:');
-    console.log('Mobile: 9999999999');
-    console.log('MPIN: 12345');
-
-  } catch (error) {
-    console.error('Error creating admin:', error);
-  } finally {
-    await mongoose.connection.close();
-    console.log('\nDatabase connection closed');
+  const name = String(process.env.ADMIN_NAME || '').trim();
+  const mobile = String(process.env.ADMIN_MOBILE || '').trim();
+  const mpin = String(process.env.ADMIN_MPIN || '');
+  if (name.length < 2 || !/^[0-9]{10}$/.test(mobile) || !/^[0-9]{5}$/.test(mpin)) {
+    throw new Error('Set ADMIN_NAME, ADMIN_MOBILE (10 digits), and ADMIN_MPIN (5 digits) before running this script.');
   }
+  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required.');
+  await mongoose.connect(process.env.MONGODB_URI);
+  const existing = await User.findOne({ mobile });
+  if (existing && existing.role !== 'admin') throw new Error('This mobile already belongs to a non-admin account. Use a different admin mobile.');
+  const passwordHash = await bcrypt.hash(mpin, 12);
+  if (existing) {
+    existing.name = name;
+    existing.mpin = passwordHash;
+    existing.role = 'admin';
+    existing.isActive = true;
+    await existing.save();
+    console.log('Existing administrator credentials updated.');
+  } else {
+    await new User({ name, mobile, mpin: passwordHash, role: 'admin', isActive: true }).save();
+    console.log('Administrator account created.');
+  }
+  console.log('Admin mobile:', mobile);
+  console.log('Role: admin');
+  console.log('MPIN is stored as a one-way hash and is never printed.');
 }
-
-createAdmin(); 
+createAdmin()
+  .catch(error => { console.error('Admin setup failed:', error.message); process.exitCode = 1; })
+  .finally(async () => { if (mongoose.connection.readyState) await mongoose.connection.close(); });

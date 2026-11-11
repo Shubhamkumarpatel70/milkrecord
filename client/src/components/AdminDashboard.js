@@ -65,7 +65,7 @@ function AdminDashboard({ onLogout, onOpenSettings }) {
     setEditForm({
       name: user.name,
       mobile: user.mobile,
-      mpin: user.mpin || '',
+      mpin: '',
       upiId: user.paymentOptions?.upiId || '',
       isActive: user.isActive !== false
     });
@@ -532,14 +532,11 @@ function AdminDashboard({ onLogout, onOpenSettings }) {
                 </div>
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">MPIN</label>
-                  <input
-                    type="text"
-                    value={editForm.mpin}
-                    onChange={(e) => setEditForm({...editForm, mpin: e.target.value})}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent"
-                    pattern="[0-9]{5}"
-                    required
-                  />
+                  <div className="relative flex max-w-xs gap-2" onClick={e => e.currentTarget.querySelector('input')?.focus()}>
+                    {Array.from({length:5}, (_, index) => <div key={index} className="flex h-12 w-11 items-center justify-center rounded-xl border border-gray-300 bg-gray-50 text-xl font-bold">{editForm.mpin[index] ? '•' : '·'}</div>)}
+                    <input aria-label="New 5-digit MPIN" type="password" inputMode="numeric" maxLength="5" value={editForm.mpin} onChange={e => setEditForm({...editForm, mpin: e.target.value.replace(/[^0-9]/g, '').slice(0,5)})} className="absolute inset-0 h-full w-full opacity-0" />
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">Leave blank to keep the existing MPIN. Enter 5 digits to reset it.</p>
                 </div>
                 <div>
                   <label className="block text-gray-700 font-semibold mb-2">UPI ID</label>
