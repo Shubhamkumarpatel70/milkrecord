@@ -5,12 +5,17 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, whatsapp, createdAt, shift = 'morning' } = req.body;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, whatsapp, createdAt, shift = 'morning' } = req.body;
     const ownerId = req.authUser._id;
-    const quantity = Number(quantityKg), totalAmount = Number(amount);
-    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift)) {
-      return res.status(400).json({ message: 'Enter a customer, valid user, positive quantity and non-negative amount.' });
+    const quantity = Number(quantityKg);
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit)) {
+      return res.status(400).json({ message: 'Enter a customer, positive quantity, valid unit and shift.' });
     }
+    const owner = await User.findById(ownerId).select('businessProfile');
+    const configured = owner?.businessProfile?.isConfigured;
+    const effectiveUnit = configured ? owner.businessProfile.quantityUnit : quantityUnit;
+    const ratePerUnit = configured ? Number(owner.businessProfile.milkRate) : 50;
+    const totalAmount = Math.round(quantity * ratePerUnit * 100) / 100;
     const entryDate = createdAt ? new Date(createdAt) : new Date();
     if (Number.isNaN(entryDate.getTime()) || entryDate > new Date(Date.now() + 5 * 60 * 1000)) return res.status(400).json({ message: 'Invalid milk record date.' });
     
@@ -22,7 +27,7 @@ exports.createMilkRecord = async (req, res) => {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
+    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, quantityUnit: effectiveUnit, ratePerUnit, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {
@@ -34,20 +39,19 @@ exports.createMilkRecord = async (req, res) => {
 exports.updateMilkRecord = async (req, res) => {
   try {
     const ownerId = req.authUser._id;
-    const { customer, quantityKg, amount, shift, createdAt } = req.body;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, shift, createdAt } = req.body;
     const quantity = Number(quantityKg);
-    const totalAmount = Number(amount);
     const entryDate = new Date(createdAt);
-
     if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 ||
-        !Number.isFinite(totalAmount) || totalAmount < 0 ||
-        !['morning', 'evening'].includes(shift) || Number.isNaN(entryDate.getTime()) ||
+        !['morning', 'evening'].includes(shift) || !['kg', 'liter'].includes(quantityUnit) || Number.isNaN(entryDate.getTime()) ||
         entryDate > new Date(Date.now() + 5 * 60 * 1000)) {
-      return res.status(400).json({ message: 'Enter valid customer, quantity, amount, shift and date.' });
+      return res.status(400).json({ message: 'Enter valid customer, quantity, unit, shift and date.' });
     }
 
     const record = await MilkRecord.findOne({ _id: req.params.recordId, user: ownerId });
     if (!record) return res.status(404).json({ message: 'Milk record not found.' });
+    const historicalRate = record.ratePerUnit !== undefined && record.ratePerUnit !== null ? Number(record.ratePerUnit) : Number(record.amount || 0) / Number(record.quantityKg || 1);
+    const totalAmount = Math.round(quantity * historicalRate * 100) / 100;
     if (totalAmount < Number(record.paidAmount || 0)) {
       return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
     }
@@ -61,6 +65,8 @@ exports.updateMilkRecord = async (req, res) => {
     record.customerId = customerDoc._id;
     record.whatsapp = customerDoc.whatsapp;
     record.quantityKg = quantity;
+    record.quantityUnit = record.quantityUnit || quantityUnit;
+    record.ratePerUnit = historicalRate;
     record.amount = totalAmount;
     record.shift = shift;
     record.createdAt = entryDate;
@@ -184,12 +190,14 @@ exports.getTodaysMilkQuantity = async (req, res) => {
     });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = todaysRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = todaysRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = todaysRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Today's total milk quantity for user ${userId}: ${totalQuantityKg}kg from ${todaysRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: todaysRecords.length,
       date: today.toISOString().slice(0, 10)
     });
@@ -212,12 +220,14 @@ exports.getTotalMilkQuantity = async (req, res) => {
     const allRecords = await MilkRecord.find({ user: userId });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = allRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = allRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = allRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Total milk quantity (all-time) for user ${userId}: ${totalQuantityKg}kg from ${allRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: allRecords.length
     });
   } catch (err) {

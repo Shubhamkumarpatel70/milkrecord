@@ -247,3 +247,9 @@ code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Animated success confirmation for saved dairy configuration */
+.success-check { animation: success-pop 420ms cubic-bezier(.2,.8,.2,1) both; }
+.success-check-icon { stroke-dasharray: 42; stroke-dashoffset: 42; animation: success-draw 520ms 180ms ease-out forwards; }
+@keyframes success-pop { 0% { transform: scale(.55); opacity: .25; } 75% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
+@keyframes success-draw { to { stroke-dashoffset: 0; } }

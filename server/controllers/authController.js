@@ -118,3 +118,48 @@ exports.generatePaymentQR = async (req, res) => {
     return res.status(500).json({ message: 'Server error.' });
   }
 };
+
+
+exports.getBusinessProfile = async (req, res) => {
+  try {
+    const user = await User.findById(req.authUser._id).select('name businessProfile paymentOptions');
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    return res.json({
+      name: user.name,
+      businessProfile: user.businessProfile || { shopName: '', milkRate: 50, quantityUnit: 'kg', isConfigured: false },
+      paymentOptions: user.paymentOptions || {}
+    });
+  } catch (err) {
+    console.error('Get business profile error:', err.message);
+    return res.status(500).json({ message: 'Unable to load business profile.' });
+  }
+};
+
+exports.updateBusinessProfile = async (req, res) => {
+  try {
+    const shopName = String(req.body.shopName || '').trim();
+    const milkRate = Number(req.body.milkRate);
+    const quantityUnit = String(req.body.quantityUnit || 'kg');
+    const upiId = String(req.body.upiId || '').trim();
+    if (shopName.length < 2 || shopName.length > 100) return res.status(400).json({ message: 'Shop/brand name must be between 2 and 100 characters.' });
+    if (!Number.isFinite(milkRate) || milkRate < 0 || milkRate > 100000) return res.status(400).json({ message: 'Enter a valid non-negative milk rate.' });
+    if (!['kg', 'liter'].includes(quantityUnit)) return res.status(400).json({ message: 'Choose kg or liter as the quantity unit.' });
+    if (upiId && !/^[a-zA-Z0-9._-]+@[a-zA-Z]{3,}$/.test(upiId)) return res.status(400).json({ message: 'Enter a valid UPI ID.' });
+    const user = await User.findById(req.authUser._id);
+    if (!user) return res.status(404).json({ message: 'User not found.' });
+    user.businessProfile = { shopName, milkRate, quantityUnit, isConfigured: true };
+    user.paymentOptions = user.paymentOptions || {};
+    if (upiId) {
+      user.paymentOptions.upiId = upiId;
+      user.paymentOptions.hasPaymentOption = true;
+    } else if (req.body.upiId === '') {
+      user.paymentOptions.upiId = '';
+      user.paymentOptions.hasPaymentOption = false;
+    }
+    await user.save();
+    return res.json({ message: 'Business configuration saved.', businessProfile: user.businessProfile, paymentOptions: user.paymentOptions });
+  } catch (err) {
+    console.error('Update business profile error:', err.message);
+    return res.status(500).json({ message: 'Unable to save business configuration.' });
+  }
+};

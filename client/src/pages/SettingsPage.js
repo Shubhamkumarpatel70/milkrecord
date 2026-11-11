@@ -1,224 +1,84 @@
-import React, { useState, useEffect } from 'react';
-import { Settings, Globe, Printer, Database, User, Shield, ExternalLink, Save, CheckCircle2, QrCode } from 'lucide-react';
-import { useSettings } from '../contexts/SettingsContext';
+import React, { useEffect, useState } from 'react';
+import { Settings, Store, Milk, QrCode, ExternalLink, Save, Check, CircleHelp, MessageCircle, BookOpen, ShieldCheck } from 'lucide-react';
 
-export default function SettingsPage({
-  upiId = '',
-  customers = [],
-  records = [],
-  onSaveUpiId
-}) {
-  const { language, setLanguage, defaultMilkRate, setDefaultMilkRate } = useSettings();
-  const [businessName, setBusinessName] = useState('Milk Record Dairy');
+export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveConfiguration, onStartTour }) {
+  const [shopName, setShopName] = useState(businessProfile.shopName || '');
+  const [milkRate, setMilkRate] = useState(String(businessProfile.milkRate ?? 50));
+  const [quantityUnit, setQuantityUnit] = useState(businessProfile.quantityUnit || 'kg');
   const [currentUpiId, setCurrentUpiId] = useState(upiId);
-  const [paperSize, setPaperSize] = useState('58mm'); // '58mm' | '80mm' | 'A4'
-  const [savedMsg, setSavedMsg] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
-    setCurrentUpiId(upiId);
-  }, [upiId]);
+    setShopName(businessProfile.shopName || '');
+    setMilkRate(String(businessProfile.milkRate ?? 50));
+    setQuantityUnit(businessProfile.quantityUnit || 'kg');
+    setCurrentUpiId(upiId || '');
+  }, [businessProfile.shopName, businessProfile.milkRate, businessProfile.quantityUnit, upiId]);
 
-  const handleDownloadBackup = () => {
-    const backup = { app: 'Milk Record', exportedAt: new Date().toISOString(), customers, milkRecords: records };
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `milk-record-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleSaveSettings = async (e) => {
-    e.preventDefault();
+  const handleSave = async (event) => {
+    event.preventDefault();
+    setError('');
+    const rate = Number(milkRate);
+    if (shopName.trim().length < 2) return setError('Shop/brand name kam se kam 2 characters ka hona chahiye.');
+    if (!Number.isFinite(rate) || rate < 0) return setError('Valid milk rate enter karein.');
+    setSaving(true);
     try {
-      if (onSaveUpiId) await onSaveUpiId(currentUpiId.trim());
-      setSavedMsg('UPI settings saved successfully.');
-      setTimeout(() => setSavedMsg(''), 3000);
-    } catch (error) {
-      setSavedMsg('Could not save settings. Please try again.');
+      await onSaveConfiguration({ shopName: shopName.trim(), milkRate: rate, quantityUnit, upiId: currentUpiId.trim() });
+      setShowSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Configuration save nahi hui. Dobara try karein.');
+    } finally {
+      setSaving(false);
     }
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-8 max-w-4xl mx-auto w-full max-w-full overflow-x-hidden">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft">
+    <div className="mx-auto w-full max-w-4xl space-y-5 pb-10 animate-fade-in">
+      <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 sm:p-3 rounded-2xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
-            <Settings className="w-6 h-6" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">SaaS Settings & Configuration</h1>
-            <p className="text-xs text-slate-500">Manage business preferences, language, printer layout, and database backup.</p>
-          </div>
+          <div className="rounded-2xl bg-sky-50 p-3 text-sky-700"><Settings className="h-6 w-6"/></div>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-sky-700">Workspace preferences</p><h1 className="text-2xl font-bold text-slate-900">Dairy Settings</h1><p className="mt-1 text-sm text-slate-500">Apne dairy business ka naam, milk rate aur quantity unit manage karein.</p></div>
         </div>
+      </header>
 
-        {savedMsg && (
-          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-100 text-emerald-700 text-xs font-bold animate-fade-in shrink-0">
-            <CheckCircle2 className="w-4 h-4" />
-            <span>{savedMsg}</span>
+      <form onSubmit={handleSave} className="space-y-5">
+        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-2"><Store className="h-5 w-5 text-sky-600"/><h2 className="font-bold text-slate-900">Business profile</h2></div>
+          <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Shop / Brand Name</label><input required minLength="2" maxLength="100" value={shopName} onChange={e=>setShopName(e.target.value)} placeholder="e.g. Shree Krishna Dairy" className="input-field min-h-12"/></div>
+        </section>
+
+        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-2"><Milk className="h-5 w-5 text-emerald-600"/><h2 className="font-bold text-slate-900">Milk rate & quantity</h2></div>
+          <p className="text-sm text-slate-500">Yeh default rate sirf aapke dairy account par apply hoga. Har supplier apna alag rate aur unit set kar sakta hai.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Default Milk Rate (₹ / {quantityUnit === 'kg' ? 'Kg' : 'Liter'})</label><div className="relative"><span className="absolute left-3 top-3 text-slate-500">₹</span><input type="number" min="0" max="100000" step="0.01" required value={milkRate} onChange={e=>setMilkRate(e.target.value)} className="input-field min-h-12 pl-8" placeholder="50.00"/></div></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Quantity Type</label><div className="grid grid-cols-2 gap-2">{[{value:'kg',label:'Kilogram (Kg)'},{value:'liter',label:'Liter (L)' }].map(option=><button key={option.value} type="button" onClick={()=>setQuantityUnit(option.value)} className={'min-h-12 rounded-xl border px-3 text-sm font-semibold '+(quantityUnit===option.value?'border-sky-500 bg-sky-50 text-sky-700':'border-slate-200 bg-white text-slate-600')}>{option.label}</button>)}</div></div>
           </div>
-        )}
-      </div>
+          <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Example calculation</p><p className="mt-1 text-lg font-bold text-emerald-900">2 {quantityUnit === 'kg' ? 'Kg' : 'Liter'} × ₹{(Number(milkRate)||0).toFixed(2)} = ₹{((Number(milkRate)||0)*2).toFixed(2)}</p></div>
+        </section>
 
-      <form onSubmit={handleSaveSettings} className="space-y-4 sm:space-y-6">
-        
-        {/* Business & Profile */}
-        <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-            <User className="w-4 h-4 text-sky-500" />
-            <span>Business Profile & Defaults</span>
-          </h3>
+        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-2"><QrCode className="h-5 w-5 text-amber-600"/><h2 className="font-bold text-slate-900">UPI payment details <span className="font-normal text-slate-400">(optional)</span></h2></div>
+          <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">UPI ID / VPA</label><input value={currentUpiId} onChange={e=>setCurrentUpiId(e.target.value)} maxLength={100} placeholder="yourname@upi" className="input-field min-h-12"/><p className="mt-1 text-xs text-slate-500">Customer payment QR banane ke liye use hoga.</p></div>
+        </section>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Dairy / Business Name</label>
-              <input
-                type="text"
-                value={businessName}
-                onChange={e => setBusinessName(e.target.value)}
-                className="input-field min-h-[44px]"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Default Milk Rate (₹ / Kg)</label>
-              <input
-                type="number"
-                value={defaultMilkRate}
-                onChange={e => setDefaultMilkRate(e.target.value)}
-                className="input-field min-h-[44px]"
-              />
-            </div>
+        <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center gap-2"><CircleHelp className="h-5 w-5 text-indigo-600"/><h2 className="font-bold text-slate-900">Need help?</h2></div>
+          <p className="mt-2 text-sm text-slate-500">Milk Record use karne mein help chahiye? Product tour dekhein ya ASKC Technologies support se contact karein.</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <a href="https://askctechnologies.in" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:border-sky-300 hover:bg-sky-50"><BookOpen className="h-5 w-5 text-sky-600"/><span><strong className="block text-sm text-slate-800">Help & product info</strong><small className="text-xs text-slate-500">Guides and product updates</small></span><ExternalLink className="ml-auto h-4 w-4 text-slate-400"/></a>
+            <button type="button" onClick={onStartTour} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-emerald-300 hover:bg-emerald-50"><MessageCircle className="h-5 w-5 text-emerald-600"/><span><strong className="block text-sm text-slate-800">Start guided product tour</strong><small className="text-xs text-slate-500">Step-by-step walkthrough of the app</small></span></button>
           </div>
-        </div>
+          <p className="mt-3 flex items-start gap-2 text-xs text-slate-400"><ShieldCheck className="h-4 w-4 shrink-0"/>Your business configuration is saved to your signed-in dairy account.</p>
+        </section>
 
-        {/* UPI Payment Gateway Configuration */}
-        <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-            <QrCode className="w-4 h-4 text-amber-500" />
-            <span>Digital UPI QR Configuration</span>
-          </h3>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Receiver UPI ID / VPA</label>
-            <input
-              type="text"
-              placeholder="e.g. yourname@upi or mobile@paytm"
-              value={currentUpiId}
-              onChange={e => setCurrentUpiId(e.target.value)}
-              maxLength={100}
-              className="input-field font-mono min-h-[44px]"
-            />
-            <p className="text-[11px] text-slate-400 mt-1">This UPI VPA will be encoded in QR codes generated for instant customer payment scans.</p>
-          </div>
-        </div>
-
-        {/* Appearance & Language */}
-        <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-            <Globe className="w-4 h-4 text-purple-500" />
-            <span>App Language</span>
-          </h3>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Language</label>
-            <select value={language} onChange={e => setLanguage(e.target.value)} className="input-field text-xs min-h-[44px]">
-              <option value="en">English</option>
-              <option value="hi">Hindi (हिंदी)</option>
-              <option value="gu">Gujarati (ગુજરાતી)</option>
-              <option value="mr">Marathi (मराठी)</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Printer Settings */}
-        <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-            <Printer className="w-4 h-4 text-emerald-500" />
-            <span>Thermal & Standard Printer Layout</span>
-          </h3>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Receipt Paper Width</label>
-            <div className="grid grid-cols-3 gap-2 sm:gap-3">
-              {[
-                { id: '58mm', label: '58mm Thermal' },
-                { id: '80mm', label: '80mm Thermal' },
-                { id: 'A4', label: 'Standard A4' },
-              ].map(p => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => setPaperSize(p.id)}
-                  className={`p-2.5 sm:p-3 rounded-xl border text-xs font-bold text-center transition-all min-h-[44px] ${
-                    paperSize === p.id
-                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300'
-                      : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'
-                  }`}
-                >
-                  {p.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Data Backup & Support */}
-        <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
-          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
-            <Shield className="w-4 h-4 text-sky-500" />
-            <span>Data Protection & Support</span>
-          </h3>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
-            <div>
-              <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Cloud & Local Backup</h4>
-              <p className="text-[11px] text-slate-500">Download a copy of the records currently loaded in this browser. Keep a separate secure backup regularly.</p>
-            </div>
-            <button
-              type="button"
-              onClick={handleDownloadBackup}
-              className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 min-h-[38px] w-full sm:w-auto justify-center"
-            >
-              <Database className="w-4 h-4" />
-              <span>Download Backup</span>
-            </button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 p-3.5 sm:p-4 rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 text-xs">
-            <div>
-              <span className="font-bold text-slate-800 dark:text-slate-200 block">Technology Partner Support</span>
-              <span className="text-slate-500">Contact ASKC TECHNOLOGIES for custom enterprise integrations.</span>
-            </div>
-            <a
-              href="https://askctechnologies.in"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sky-600 dark:text-sky-400 hover:underline font-bold flex items-center gap-1 shrink-0"
-            >
-              <span>Visit Website</span>
-              <ExternalLink className="w-3.5 h-3.5" />
-            </a>
-          </div>
-        </div>
-
-        {/* Save Actions */}
-        <div className="flex justify-end">
-          <button
-            type="submit"
-            className="btn-primary text-xs py-3 px-6 flex items-center justify-center gap-2 shadow-md min-h-[44px] w-full sm:w-auto"
-          >
-            <Save className="w-4 h-4" />
-            <span>Save All Configuration</span>
-          </button>
-        </div>
-
+        {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
+        <button type="submit" disabled={saving} className="btn-primary flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-6 text-sm font-bold shadow-md disabled:opacity-60 sm:w-auto"><Save className="h-4 w-4"/>{saving?'Saving configuration…':'Save All Configuration'}</button>
       </form>
 
+      {showSuccess && <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="save-success-title"><div className="w-full max-w-sm rounded-3xl bg-white p-7 text-center shadow-2xl animate-fade-in"><div className="success-check mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100 text-emerald-600"><Check className="h-10 w-10 success-check-icon"/></div><h2 id="save-success-title" className="text-xl font-bold text-slate-900">Configuration Saved!</h2><p className="mt-2 text-sm text-slate-500">Aapki dairy settings successfully update ho gayi hain.</p><button type="button" onClick={()=>setShowSuccess(false)} className="btn-primary mt-6 min-h-11 w-full">Done</button></div></div>}
     </div>
   );
 }

@@ -19,7 +19,7 @@ export default function GuidedTour({ isOpen, onClose, onNavigate }) {
     },
     {
       title: 'Daily Milk Entries',
-      description: 'Record morning and evening milk quantities (Kg). View entries in calendar or table layout with paid/unpaid status.',
+      description: 'Record morning and evening milk in your chosen unit (Kg or Liter). The amount is calculated automatically using your own default rate.',
       target: 'records'
     },
     {
@@ -34,7 +34,7 @@ export default function GuidedTour({ isOpen, onClose, onNavigate }) {
     },
     {
       title: 'Settings & Thermal Printer',
-      description: 'Configure business info, dark/light theme, Hindi/English language, and thermal receipt printer settings.',
+      description: 'Set your shop name, your own milk rate and quantity unit, and UPI payment details. Changes apply only to your dairy account.',
       target: 'settings'
     }
   ];

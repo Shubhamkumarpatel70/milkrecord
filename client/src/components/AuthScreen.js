@@ -57,7 +57,7 @@ export default function AuthScreen({ onAuthenticated }) {
           {error && <div role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</div>}
           <button disabled={busy} className="w-full rounded-xl bg-sky-600 py-3 font-semibold text-white transition hover:bg-sky-700 disabled:opacity-60">{busy ? 'Please wait…' : mode === 'customer' ? 'View my milk records' : mode === 'login' ? 'Login securely' : 'Create account'}</button>
         </form>
-        <p className="mt-5 text-center text-xs leading-5 text-slate-500">{mode === 'customer' ? 'Use the mobile number registered with your milk supplier.' : 'Your MPIN is stored securely as a one-way hash. Never share it with anyone.'}</p>
+        {mode === 'customer' && <p className="mt-5 text-center text-xs leading-5 text-slate-500">Use the mobile number registered with your milk supplier.</p>}
       </div>
     </div>
   );

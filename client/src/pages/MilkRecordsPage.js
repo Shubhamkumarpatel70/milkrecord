@@ -159,7 +159,7 @@ export default function MilkRecordsPage({
                   <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/60 text-xs">
                     <div>
                       <span className="text-slate-400 text-[10px] uppercase font-bold block">Quantity</span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-100">{rec.quantityKg || rec.quantity || 0} Kg</span>
+                      <span className="font-extrabold text-slate-800 dark:text-slate-100">{rec.quantityKg || rec.quantity || 0} {rec.quantityUnit === 'liter' ? 'Liter' : 'Kg'}</span>
                     </div>
                     <div className="text-right">
                       <span className="text-slate-400 text-[10px] uppercase font-bold block">Amount</span>
@@ -180,7 +180,7 @@ export default function MilkRecordsPage({
                     <th className="p-4">Date</th>
                     <th className="p-4">Customer</th>
                     <th className="p-4">Shift</th>
-                    <th className="p-4">Quantity (Kg)</th>
+                    <th className="p-4">Quantity</th>
                     <th className="p-4">Amount (₹)</th>
                     <th className="p-4">Status</th>
                     <th className="p-4 text-right">Action</th>
@@ -206,7 +206,7 @@ export default function MilkRecordsPage({
                         </span>
                       </td>
                       <td className="p-4 font-extrabold text-slate-900 dark:text-slate-100">
-                        {rec.quantityKg || rec.quantity || 0} Kg
+                        {rec.quantityKg || rec.quantity || 0} {rec.quantityUnit === 'liter' ? 'Liter' : 'Kg'}
                       </td>
                       <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
                         ₹{rec.amount || 0}

@@ -47,7 +47,7 @@ export function MainAppContent() {
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
   const [showEditRecordModal, setShowEditRecordModal] = useState(false);
   const [editingRecordId, setEditingRecordId] = useState(null);
-  const [editRecordForm, setEditRecordForm] = useState({ customer: '', quantityKg: '', amount: '', shift: 'morning', date: '' });
+  const [editRecordForm, setEditRecordForm] = useState({ customer: '', quantityKg: '', amount: '', ratePerUnit: 50, quantityUnit: 'kg', shift: 'morning', date: '' });
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showPaymentQRModal, setShowPaymentQRModal] = useState(false);
   const [showPaymentSettleModal, setShowPaymentSettleModal] = useState(null);
@@ -56,7 +56,9 @@ export function MainAppContent() {
   // Data States
   const [loading, setLoading] = useState(true);
   const [todaysMilkKg, setTodaysMilkKg] = useState(0);
+  const [todaysMilkLiter, setTodaysMilkLiter] = useState(0);
   const [totalMilkQuantityKg, setTotalMilkQuantityKg] = useState(0);
+  const [totalMilkQuantityLiter, setTotalMilkQuantityLiter] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalReceive, setTotalReceive] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
@@ -77,6 +79,7 @@ export function MainAppContent() {
   });
   const [customerForm, setCustomerForm] = useState({ name: '', whatsapp: '' });
   const [upiId, setUpiId] = useState('');
+  const [businessProfile, setBusinessProfile] = useState({ shopName: '', milkRate: 50, quantityUnit: 'kg', isConfigured: false });
   const [qrCodeData, setQrCodeData] = useState(null);
   const [qrAmount, setQrAmount] = useState('');
 
@@ -102,12 +105,6 @@ export function MainAppContent() {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
       setUser(null);
-    }
-
-    // Check First-Time Onboarding
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (!hasSeenOnboarding) {
-      setShowOnboarding(true);
     }
 
     setLoading(false);
@@ -137,13 +134,19 @@ export function MainAppContent() {
   const refreshData = useCallback(async () => {
 
     if (!isAuthenticated || userRole === 'customer') {
-      setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
+      setTodaysMilkKg(0); setTodaysMilkLiter(0); setTotalMilkQuantityKg(0); setTotalMilkQuantityLiter(0); setTotalRevenue(0);
       setTotalReceive(0); setTotalPending(0); setTotalCustomers(0); setTotalRecords(0);
       setCustomers([]); setRecords([]);
       return;
     }
 
     try {
+      const profileResponse = await axios.get('/api/auth/business-profile/me');
+      const profile = profileResponse.data?.businessProfile || {};
+      setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
+      if (!profile.isConfigured) setShowOnboarding(true);
+      if (profileResponse.data?.paymentOptions) setUpiId(profileResponse.data.paymentOptions.upiId || '');
+
       // Fetch Customer Summaries
       const resSummaries = await axios.get('/api/milk-records');
       if (Array.isArray(resSummaries.data)) {
@@ -185,12 +188,14 @@ export function MainAppContent() {
       const resToday = await axios.get('/api/milk-records/today');
       if (resToday.data) {
         setTodaysMilkKg(resToday.data.totalQuantityKg || 0);
+        setTodaysMilkLiter(resToday.data.totalQuantityLiter || 0);
       }
 
       // Fetch Total Milk
       const resTotal = await axios.get('/api/milk-records/total');
       if (resTotal.data) {
         setTotalMilkQuantityKg(resTotal.data.totalQuantityKg || 0);
+        setTotalMilkQuantityLiter(resTotal.data.totalQuantityLiter || 0);
         setTotalRecords(resTotal.data.recordCount || 0);
       }
 
@@ -223,7 +228,8 @@ export function MainAppContent() {
         await axios.post('/api/milk-records', {
           customer: recordForm.customer,
           quantityKg: recordForm.quantityKg,
-          amount: recordForm.amount || recordForm.quantityKg * 50,
+          amount: recordForm.amount || Number(recordForm.quantityKg) * Number(businessProfile.milkRate || 0),
+          quantityUnit: businessProfile.quantityUnit || 'kg',
           shift: recordForm.shift,
           whatsapp: recordForm.whatsapp,
           createdAt: recordForm.date
@@ -245,7 +251,8 @@ export function MainAppContent() {
       await axios.put(`/api/milk-records/${editingRecordId}`, {
         customer: editRecordForm.customer,
         quantityKg: editRecordForm.quantityKg,
-        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50,
+        amount: Number(editRecordForm.quantityKg) * Number(editRecordForm.ratePerUnit || 0),
+        quantityUnit: editRecordForm.quantityUnit || 'kg',
         shift: editRecordForm.shift,
         createdAt: editRecordForm.date
       });
@@ -297,15 +304,12 @@ export function MainAppContent() {
     }
   };
 
-  const handleSaveUpiId = async (nextUpiId) => {
-    try {
-      await axios.post('/api/auth/payment-option', { upiId: nextUpiId });
-      setUpiId(nextUpiId);
-      return true;
-    } catch (err) {
-      alert(err.response?.data?.message || 'UPI settings could not be saved.');
-      throw err;
-    }
+  const handleSaveConfiguration = async (configuration) => {
+    const response = await axios.put('/api/auth/business-profile/me', configuration);
+    const profile = response.data.businessProfile || {};
+    setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
+    setUpiId(response.data.paymentOptions?.upiId || '');
+    return response.data;
   };
 
   const handleLogout = () => {
@@ -387,7 +391,10 @@ export function MainAppContent() {
           {currentView === 'dashboard' && (
             <DashboardPage
               todaysMilkKg={todaysMilkKg}
+              todaysMilkLiter={todaysMilkLiter}
               totalMilkQuantityKg={totalMilkQuantityKg}
+              totalMilkQuantityLiter={totalMilkQuantityLiter}
+              quantityUnit={businessProfile.quantityUnit}
               totalRevenue={totalRevenue}
               totalReceive={totalReceive}
               totalPending={totalPending}
@@ -442,6 +449,8 @@ export function MainAppContent() {
                   customer: record.customerName || record.customer || '',
                   quantityKg: record.quantityKg || record.quantity || '',
                   amount: record.amount || '',
+                  ratePerUnit: Number(record.ratePerUnit ?? (Number(record.amount || 0) / Number(record.quantityKg || 1))),
+                  quantityUnit: record.quantityUnit || 'kg',
                   shift: record.shift || 'morning',
                   date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
                 });
@@ -475,10 +484,10 @@ export function MainAppContent() {
 
           {currentView === 'settings' && (
             <SettingsPage
+              businessProfile={businessProfile}
               upiId={upiId}
-              customers={customers}
-              records={records}
-              onSaveUpiId={handleSaveUpiId}
+              onSaveConfiguration={handleSaveConfiguration}
+              onStartTour={() => setShowTour(true)}
             />
           )}
 
@@ -518,7 +527,7 @@ export function MainAppContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity (Kg)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity ({businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'})</label>
                   <input
                     type="number"
                     step="0.5"
@@ -542,15 +551,10 @@ export function MainAppContent() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Total Amount (₹)</label>
-                <input
-                  type="number"
-                  value={recordForm.amount || (recordForm.quantityKg ? recordForm.quantityKg * 50 : '')}
-                  onChange={e => setRecordForm({ ...recordForm, amount: e.target.value })}
-                  className="input-field"
-                  placeholder="Auto calculated at ₹50/Kg"
-                />
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Milk amount calculation</p>
+                <p className="mt-1 text-sm font-semibold text-slate-700">{recordForm.quantityKg || '0'} {businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'} × ₹{Number(businessProfile.milkRate || 0).toFixed(2)} / {businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'}</p>
+                <p className="mt-1 text-2xl font-extrabold text-emerald-800">₹{(Number(recordForm.quantityKg || 0) * Number(businessProfile.milkRate || 0)).toFixed(2)}</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
@@ -588,7 +592,7 @@ export function MainAppContent() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity (Kg)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity ({editRecordForm.quantityUnit === 'liter' ? 'Liter' : 'Kg'})</label>
                   <input type="number" min="0.01" step="0.01" required value={editRecordForm.quantityKg} onChange={e => setEditRecordForm({ ...editRecordForm, quantityKg: e.target.value })} className="input-field" />
                 </div>
                 <div>
@@ -599,9 +603,10 @@ export function MainAppContent() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (₹)</label>
-                <input type="number" min="0" step="0.01" required value={editRecordForm.amount} onChange={e => setEditRecordForm({ ...editRecordForm, amount: e.target.value })} className="input-field" />
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Saved entry rate</p>
+                <p className="mt-1 text-sm font-semibold text-slate-700">{editRecordForm.quantityKg || '0'} {editRecordForm.quantityUnit === 'liter' ? 'Liter' : 'Kg'} × ₹{Number(editRecordForm.ratePerUnit || 0).toFixed(2)}</p>
+                <p className="mt-1 text-2xl font-extrabold text-emerald-800">₹{(Number(editRecordForm.quantityKg || 0) * Number(editRecordForm.ratePerUnit || 0)).toFixed(2)}</p>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Entry Date</label>
@@ -806,9 +811,15 @@ export function MainAppContent() {
       <OnboardingWizard
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
-        onComplete={(data) => {
-          localStorage.setItem('hasSeenOnboarding', 'true');
-          if (data.upiId) setUpiId(data.upiId);
+        onComplete={async (data) => {
+          try {
+            await handleSaveConfiguration({ shopName: data.businessName, milkRate: Number(data.defaultRatePerKg), quantityUnit: data.quantityUnit, upiId: data.upiId || '' });
+          } catch (error) {
+            alert(error.response?.data?.message || 'Setup save nahi hua. Settings se dobara try karein.');
+            setShowOnboarding(true);
+            return false;
+          }
+          return true;
         }}
       />
 
