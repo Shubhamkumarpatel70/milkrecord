@@ -48,18 +48,9 @@ exports.login = async (req, res) => {
 };
 
 exports.customerLogin = async (req, res) => {
-  try {
-    const whatsapp = String(req.body.whatsapp || '').trim();
-    if (!validMobile(whatsapp)) return res.status(400).json({ message: 'Enter a valid 10-digit WhatsApp number.' });
-    const matches = await Customer.find({ whatsapp }).limit(2);
-    if (!matches.length) return res.status(404).json({ message: 'Customer not found.' });
-    if (matches.length > 1) return res.status(409).json({ message: 'This number is linked to multiple accounts. Contact the dairy owner.' });
-    const customer = matches[0];
-    return res.json({ success: true, message: 'Login successful!', customer: { _id: customer._id, name: customer.name, whatsapp: customer.whatsapp, userId: customer.user } });
-  } catch (err) {
-    console.error('Customer login error:', err.message);
-    return res.status(500).json({ message: 'Server error.' });
-  }
+  // WhatsApp number alone is not proof of identity. Keep this endpoint closed
+  // until a real OTP provider and one-time verification flow are configured.
+  return res.status(501).json({ message: 'Customer login is temporarily unavailable. OTP verification is required before customer access can be enabled.' });
 };
 
 exports.addPaymentOption = async (req, res) => {
