@@ -148,6 +148,7 @@ exports.updateBusinessProfile = async (req, res) => {
     const user = await User.findById(req.authUser._id);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     user.businessProfile = { shopName, milkRate, quantityUnit, isConfigured: true };
+    user.paymentOptions = user.paymentOptions || {};
     if (upiId) {
       user.paymentOptions.upiId = upiId;
       user.paymentOptions.hasPaymentOption = true;
