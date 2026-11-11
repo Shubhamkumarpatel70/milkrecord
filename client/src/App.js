@@ -249,8 +249,11 @@ export function MainAppContent() {
     if (!editingRecordId) return;
     try {
       await axios.put(`/api/milk-records/${editingRecordId}`, {
-        ...editRecordForm,
-        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50
+        customer: editRecordForm.customer,
+        quantityKg: editRecordForm.quantityKg,
+        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50,
+        shift: editRecordForm.shift,
+        createdAt: editRecordForm.date
       });
       setShowEditRecordModal(false);
       setEditingRecordId(null);
