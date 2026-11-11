@@ -1,195 +1,58 @@
 import React, { useState } from 'react';
-import { Store, DollarSign, QrCode, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
-import confetti from 'canvas-confetti';
+import { Store, Milk, CheckCircle2, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export default function OnboardingWizard({ isOpen, onClose, onComplete }) {
   const [step, setStep] = useState(1);
-  const [formData, setFormData] = useState({
-    businessName: '',
-    ownerName: '',
-    phone: '',
-    defaultRatePerKg: '50',
-    upiId: '',
-  });
-
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({ businessName: '', defaultRatePerKg: '50', quantityUnit: 'kg', upiId: '' });
   if (!isOpen) return null;
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleNext = () => {
-    if (step < 4) {
-      setStep(step + 1);
-    } else {
-      // Trigger celebration confetti
+  const handleNext = async () => {
+    setError('');
+    if (step === 1 && formData.businessName.trim().length < 2) return setError('Shop / brand name enter karein (minimum 2 characters).');
+    if (step === 2) {
+      const rate = Number(formData.defaultRatePerKg);
+      if (!Number.isFinite(rate) || rate < 0) return setError('Valid milk rate enter karein.');
+      setSaving(true);
       try {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
-      } catch (_) {}
-
-      if (onComplete) onComplete(formData);
-      if (onClose) onClose();
+        const saved = await onComplete?.({ ...formData, businessName: formData.businessName.trim(), defaultRatePerKg: rate });
+        if (saved === false) return;
+        if (onClose) onClose();
+      } catch (err) {
+        setError(err.message || 'Setup save nahi hua. Dobara try karein.');
+      } finally { setSaving(false); }
+      return;
     }
-  };
-
-  const handleBack = () => {
-    if (step > 1) setStep(step - 1);
+    setStep(2);
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 dark:border-slate-800 transition-all">
-        
-        {/* Step Progress Bar */}
-        <div className="bg-slate-100 dark:bg-slate-800 p-4 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-8 h-8 rounded-full bg-sky-500 text-white font-bold flex items-center justify-center text-xs">
-              {step}/4
-            </span>
-            <div>
-              <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Dairy Setup Wizard</h3>
-              <p className="text-[11px] text-slate-500">Configure your business details</p>
-            </div>
-          </div>
-
-          <div className="flex gap-1.5">
-            {[1, 2, 3, 4].map((i) => (
-              <div
-                key={i}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  i === step
-                    ? 'w-6 bg-sky-500'
-                    : i < step
-                    ? 'w-2 bg-emerald-500'
-                    : 'w-2 bg-slate-300 dark:bg-slate-700'
-                }`}
-              />
-            ))}
-          </div>
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+        <div className="border-b border-slate-100 bg-slate-50 p-5">
+          <div className="flex items-center justify-between"><span className="text-xs font-bold uppercase tracking-widest text-sky-700">Welcome to Milk Record</span><span className="rounded-full bg-sky-100 px-3 py-1 text-xs font-bold text-sky-700">Step {step} of 2</span></div>
+          <div className="mt-4 flex gap-2">{[1,2].map(i=><div key={i} className={'h-1.5 flex-1 rounded-full '+(i<=step?'bg-sky-600':'bg-slate-200')}/>)}</div>
         </div>
-
-        {/* Form Steps Body */}
-        <div className="p-6 sm:p-8 space-y-6">
-          {step === 1 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400 flex items-center justify-center">
-                <Store className="w-6 h-6" />
-              </div>
-              <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100">Step 1: Dairy & Owner Details</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Enter your dairy farm or milk collection center name.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Dairy / Business Name</label>
-                <input
-                  type="text"
-                  name="businessName"
-                  value={formData.businessName}
-                  onChange={handleChange}
-                  placeholder="e.g. Krishna Dairy Farm"
-                  className="input-field"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Owner Name</label>
-                <input
-                  type="text"
-                  name="ownerName"
-                  value={formData.ownerName}
-                  onChange={handleChange}
-                  placeholder="e.g. Ramesh Patel"
-                  className="input-field"
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400 flex items-center justify-center">
-                <DollarSign className="w-6 h-6" />
-              </div>
-              <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100">Step 2: Default Milk Rate</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Set your standard milk rate per Kg or Liter. You can customize this per entry or customer anytime.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Default Rate (₹ / Kg)</label>
-                <input
-                  type="number"
-                  name="defaultRatePerKg"
-                  value={formData.defaultRatePerKg}
-                  onChange={handleChange}
-                  placeholder="50"
-                  className="input-field"
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 3 && (
-            <div className="space-y-4 animate-fade-in">
-              <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400 flex items-center justify-center">
-                <QrCode className="w-6 h-6" />
-              </div>
-              <h4 className="text-xl font-bold text-slate-800 dark:text-slate-100">Step 3: UPI Payment Setup</h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Add your UPI ID (Google Pay / PhonePe / Paytm) so customers can scan QR codes to pay you directly.
-              </p>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">UPI ID (VPA)</label>
-                <input
-                  type="text"
-                  name="upiId"
-                  value={formData.upiId}
-                  onChange={handleChange}
-                  placeholder="e.g. 9876543210@paytm"
-                  className="input-field"
-                />
-              </div>
-            </div>
-          )}
-
-          {step === 4 && (
-            <div className="space-y-4 text-center animate-fade-in">
-              <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mx-auto shadow-lg">
-                <CheckCircle2 className="w-10 h-10" />
-              </div>
-              <h4 className="text-2xl font-bold text-slate-800 dark:text-slate-100">Setup Ready!</h4>
-              <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
-                Your Milk Record SaaS profile is configured. You can now add customers, record daily entries, and track payments!
-              </p>
-            </div>
-          )}
+        <div className="space-y-5 p-6 sm:p-8">
+          {step===1 ? <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700"><Store className="h-7 w-7"/></div>
+            <div><h2 className="text-2xl font-bold text-slate-900">Enter your shop / brand name</h2><p className="mt-2 text-sm text-slate-500">Yahi naam aapke dairy workspace aur business profile mein show hoga.</p></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Shop / Brand Name</label><input autoFocus required minLength="2" maxLength="100" value={formData.businessName} onChange={e=>setFormData({...formData,businessName:e.target.value})} placeholder="e.g. Shree Krishna Dairy" className="input-field min-h-12"/></div>
+          </> : <>
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><Milk className="h-7 w-7"/></div>
+            <div><h2 className="text-2xl font-bold text-slate-900">Set your milk rate</h2><p className="mt-2 text-sm text-slate-500">Aapka set kiya hua rate aapke dairy account ki har new milk entry mein auto calculate hoga.</p></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Quantity Type</label><div className="grid grid-cols-2 gap-3">{[{value:'kg',label:'Kilogram (Kg)'},{value:'liter',label:'Liter (L)'}].map(x=><button key={x.value} type="button" onClick={()=>setFormData({...formData,quantityUnit:x.value})} className={'min-h-12 rounded-xl border px-3 font-semibold '+(formData.quantityUnit===x.value?'border-sky-500 bg-sky-50 text-sky-700':'border-slate-200 text-slate-600')}>{x.label}</button>)}</div></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Default Milk Rate (₹ / {formData.quantityUnit==='kg'?'Kg':'Liter'})</label><input autoFocus type="number" min="0" max="100000" step="0.01" required value={formData.defaultRatePerKg} onChange={e=>setFormData({...formData,defaultRatePerKg:e.target.value})} className="input-field min-h-12" placeholder="50.00"/></div>
+            <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-700">Preview</p><p className="mt-1 text-lg font-bold text-emerald-900">2 {formData.quantityUnit==='kg'?'Kg':'Liter'} × ₹{(Number(formData.defaultRatePerKg)||0).toFixed(2)} = ₹{(2*(Number(formData.defaultRatePerKg)||0)).toFixed(2)}</p></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">UPI ID <span className="font-normal text-slate-400">(optional)</span></label><input value={formData.upiId} onChange={e=>setFormData({...formData,upiId:e.target.value})} placeholder="yourname@upi" className="input-field min-h-11"/></div>
+          </>}
+          {error&&<p role="alert" className="rounded-xl bg-rose-50 p-3 text-sm text-rose-700">{error}</p>}
         </div>
-
-        {/* Footer Actions */}
-        <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          {step > 1 ? (
-            <button
-              onClick={handleBack}
-              className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
-            </button>
-          ) : (
-            <div />
-          )}
-
-          <button
-            onClick={handleNext}
-            className="btn-primary text-xs py-2.5 px-6 flex items-center gap-1.5 ml-auto"
-          >
-            <span>{step === 4 ? 'Complete Setup' : 'Continue'}</span>
-            <ArrowRight className="w-4 h-4" />
-          </button>
+        <div className="flex items-center justify-between border-t border-slate-100 bg-slate-50 p-4">
+          {step===2?<button type="button" disabled={saving} onClick={()=>{setError('');setStep(1);}} className="flex items-center gap-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-600"><ArrowLeft className="h-4 w-4"/>Back</button>:<span/>}
+          <button type="button" disabled={saving} onClick={handleNext} className="btn-primary flex min-h-11 items-center gap-2 rounded-xl px-5 text-sm font-bold disabled:opacity-60">{saving?'Saving…':step===1?'Next':'Complete Setup'}{step===2?<CheckCircle2 className="h-4 w-4"/>:<ArrowRight className="h-4 w-4"/>}</button>
         </div>
-
       </div>
     </div>
   );
