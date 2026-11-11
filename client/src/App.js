@@ -518,7 +518,7 @@ export function MainAppContent() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity (Kg)</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity ({businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'})</label>
                   <input
                     type="number"
                     step="0.5"
@@ -542,15 +542,10 @@ export function MainAppContent() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Total Amount (₹)</label>
-                <input
-                  type="number"
-                  value={recordForm.amount || (recordForm.quantityKg ? recordForm.quantityKg * 50 : '')}
-                  onChange={e => setRecordForm({ ...recordForm, amount: e.target.value })}
-                  className="input-field"
-                  placeholder="Auto calculated at ₹50/Kg"
-                />
+              <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+                <p className="text-[11px] font-bold uppercase tracking-wide text-emerald-700">Milk amount calculation</p>
+                <p className="mt-1 text-sm font-semibold text-slate-700">{recordForm.quantityKg || '0'} {businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'} × ₹{Number(businessProfile.milkRate || 0).toFixed(2)} / {businessProfile.quantityUnit === 'liter' ? 'Liter' : 'Kg'}</p>
+                <p className="mt-1 text-2xl font-extrabold text-emerald-800">₹{(Number(recordForm.quantityKg || 0) * Number(businessProfile.milkRate || 0)).toFixed(2)}</p>
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
