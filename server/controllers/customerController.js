@@ -9,7 +9,10 @@ exports.createCustomer = async (req, res) => {
     if (!normalizedName) {
       return res.status(400).json({ message: 'Customer name is required.' });
     }
-    if (normalizedWhatsApp && !/^[6-9][0-9]{9}$/.test(normalizedWhatsApp)) {
+    if (!normalizedWhatsApp) {
+      return res.status(400).json({ message: 'WhatsApp number is required.' });
+    }
+    if (!/^[6-9][0-9]{9}$/.test(normalizedWhatsApp)) {
       return res.status(400).json({ message: 'Enter a valid 10-digit Indian WhatsApp number.' });
     }
     const ownerId = req.authUser._id;
