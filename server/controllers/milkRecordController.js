@@ -158,7 +158,7 @@ exports.getAllCustomers = async (req, res) => {
     }
     
     // Return every customer, including those without milk entries yet.
-    const customers = await Customer.find({ user: userId }, '_id name whatsapp').sort({ name: 1 });
+    const customers = await Customer.find({ user: userId }, '_id name whatsapp paymentTransactions').sort({ name: 1 });
     return res.json(customers);
   } catch (err) {
     console.error(err);
@@ -399,12 +399,19 @@ exports.updateMilkRecordStatus = async (req, res) => {
 // Customer payment functionality
 exports.customerPayment = async (req, res) => {
   try {
-    const { customerId, amount, month } = req.body;
+    const { customerId, amount, month, paymentDate, remark = '' } = req.body;
     const userId = String(req.authUser._id);
     const paymentAmount = Math.round(Number(amount) * 100) / 100;
+    const transactionDate = paymentDate ? new Date(`${paymentDate}T12:00:00`) : new Date();
+    const cleanRemark = String(remark || '').trim();
 
-    if (!customerId || !Number.isFinite(paymentAmount) || paymentAmount <= 0 || !/^[0-9]{4}-[0-9]{2}$/.test(String(month || ''))) {
-      return res.status(400).json({ message: 'Enter a valid customer, payment amount, and month (YYYY-MM).' });
+    if (!customerId || !Number.isFinite(paymentAmount) || paymentAmount <= 0 ||
+        !/^[0-9]{4}-[0-9]{2}$/.test(String(month || '')) ||
+        Number.isNaN(transactionDate.getTime()) ||
+        (paymentDate && !/^\d{4}-\d{2}-\d{2}$/.test(String(paymentDate))) ||
+        transactionDate > new Date(Date.now() + 5 * 60 * 1000) ||
+        cleanRemark.length > 500) {
+      return res.status(400).json({ message: 'Enter a valid customer, amount, payment date, month and remark (maximum 500 characters).' });
     }
 
     const customer = await Customer.findOne({ _id: customerId, user: userId });
@@ -447,12 +454,21 @@ exports.customerPayment = async (req, res) => {
       remainingPayment = Math.round((remainingPayment - applied) * 100) / 100;
     }
 
+    // Keep a permanent, date-wise transaction entry independent of milk records.
+    customer.paymentTransactions.push({
+      amount: paymentAmount,
+      paymentDate: transactionDate,
+      remark: cleanRemark
+    });
+    await customer.save();
+
     const newRemaining = Math.max(0, Math.round((remainingAmount - paymentAmount) * 100) / 100);
     return res.json({
       success: true,
       message: `Payment of ₹${paymentAmount.toFixed(2)} recorded successfully.`,
       totalPaid: Math.round((totalPaid + paymentAmount) * 100) / 100,
-      remainingAmount: newRemaining
+      remainingAmount: newRemaining,
+      transaction: customer.paymentTransactions[customer.paymentTransactions.length - 1]
     });
   } catch (err) {
     console.error('Customer payment error:', err);
