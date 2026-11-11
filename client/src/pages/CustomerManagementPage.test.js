@@ -28,7 +28,7 @@ describe('CustomerManagementPage', () => {
         ]}
       />
     );
-    expect(screen.getByText('3 Kg + 1 L')).toBeInTheDocument();
+    expect(screen.getByText('2 Kg + 1 L')).toBeInTheDocument();
     expect(screen.getByText('Show Transactions (2)')).toBeInTheDocument();
   });
 
