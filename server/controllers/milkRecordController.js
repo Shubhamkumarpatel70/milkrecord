@@ -50,7 +50,7 @@ exports.updateMilkRecord = async (req, res) => {
 
     const record = await MilkRecord.findOne({ _id: req.params.recordId, user: ownerId });
     if (!record) return res.status(404).json({ message: 'Milk record not found.' });
-    const historicalRate = Number(record.ratePerUnit || (Number(record.amount || 0) / Math.max(Number(record.quantityKg || 1), 1)) || 50);
+    const historicalRate = record.ratePerUnit !== undefined && record.ratePerUnit !== null ? Number(record.ratePerUnit) : Number(record.amount || 0) / Number(record.quantityKg || 1);
     const totalAmount = Math.round(quantity * historicalRate * 100) / 100;
     if (totalAmount < Number(record.paidAmount || 0)) {
       return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
