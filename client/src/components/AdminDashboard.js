@@ -16,7 +16,6 @@ function AdminDashboard({ onLogout, onOpenSettings }) {
   });
 
   // Modal states
-  const [showUserModal, setShowUserModal] = useState(false);
   const [showEditUserModal, setShowEditUserModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', mobile: '', mpin: '', upiId: '', isActive: true });
@@ -76,7 +75,7 @@ function AdminDashboard({ onLogout, onOpenSettings }) {
   const handleUpdateUser = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.put(`/api/admin/users/${selectedUser._id}`, editForm);
+      await axios.put(`/api/admin/users/${selectedUser._id}`, editForm);
       setMessage('User updated successfully!');
       setShowEditUserModal(false);
       fetchAllData(); // Refresh data

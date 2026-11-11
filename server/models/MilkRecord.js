@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const milkRecordSchema = new mongoose.Schema({
   customer: { type: String, required: true, trim: true },
+  customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
   quantityKg: { type: Number, required: true },       // Primary unit (kilograms)
   amount: { type: Number, required: true },
   whatsapp: { type: String, trim: true },

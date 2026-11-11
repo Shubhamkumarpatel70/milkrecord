@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { SettingsProvider } from './contexts/SettingsContext';
 
@@ -147,8 +147,7 @@ export function MainAppContent() {
   };
 
   // Fetch Dashboard Stats & Customer Records
-  const refreshData = async () => {
-    const userId = localStorage.getItem('userId') || 'demo';
+  const refreshData = useCallback(async () => {
 
     if (!isAuthenticated) {
       setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
@@ -214,17 +213,16 @@ export function MainAppContent() {
     } catch (err) {
       console.error('Failed to fetch dairy records:', err);
     }
-  };
+  }, [isAuthenticated, selectedMonth]);
 
   useEffect(() => {
     refreshData();
-  }, [isAuthenticated, isDemoMode, selectedMonth]);
+  }, [refreshData]);
 
   // Record Entry Submission
   const handleSaveRecord = async (e) => {
     e.preventDefault();
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         await axios.post('/api/milk-records', {
           customer: recordForm.customer,
@@ -248,7 +246,6 @@ export function MainAppContent() {
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         await axios.post('/api/customers', {
           ...customerForm,
@@ -266,7 +263,6 @@ export function MainAppContent() {
   // Generate Payment QR Code
   const handleGenerateQR = async () => {
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         const res = await axios.post('/api/auth/generate-payment-qr', {
           amount: qrAmount || 1000

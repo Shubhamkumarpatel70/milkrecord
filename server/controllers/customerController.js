@@ -3,12 +3,19 @@ const MilkRecord = require('../models/MilkRecord'); // Added this import for get
 
 exports.createCustomer = async (req, res) => {
   try {
-    const { name, whatsapp, userId } = req.body;
-    if (!name || !userId) {
-      return res.status(400).json({ message: 'Name and userId are required.' });
+    const { name, whatsapp } = req.body;
+    const normalizedName = String(name || '').trim();
+    const normalizedWhatsApp = String(whatsapp || '').replace(/\\D/g, '');
+    if (!normalizedName) {
+      return res.status(400).json({ message: 'Customer name is required.' });
     }
-    
-    const customer = new Customer({ name, whatsapp, user: userId });
+    if (normalizedWhatsApp && !/^[6-9]\\d{9}$/.test(normalizedWhatsApp)) {
+      return res.status(400).json({ message: 'Enter a valid 10-digit Indian WhatsApp number.' });
+    }
+    const ownerId = req.authUser._id;
+    const duplicate = await Customer.findOne({ user: ownerId, name: normalizedName });
+    if (duplicate) return res.status(409).json({ message: 'A customer with this name already exists.' });
+    const customer = new Customer({ name: normalizedName, whatsapp: normalizedWhatsApp, user: ownerId });
     await customer.save();
     
     res.status(201).json({ message: 'Customer added successfully!', customer });

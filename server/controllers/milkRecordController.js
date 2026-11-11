@@ -5,21 +5,22 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, user, whatsapp, createdAt, shift = 'morning' } = req.body;
+    const { customer, quantityKg, amount, whatsapp, createdAt, shift = 'morning' } = req.body;
+    const ownerId = req.authUser._id;
     const quantity = Number(quantityKg), totalAmount = Number(amount);
-    if (!String(customer || '').trim() || !user || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift)) {
+    if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift)) {
       return res.status(400).json({ message: 'Enter a customer, valid user, positive quantity and non-negative amount.' });
     }
     const entryDate = createdAt ? new Date(createdAt) : new Date();
     if (Number.isNaN(entryDate.getTime()) || entryDate > new Date(Date.now() + 5 * 60 * 1000)) return res.status(400).json({ message: 'Invalid milk record date.' });
     
     // Verify that the customer belongs to the user
-    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: user });
+    const customerDoc = await Customer.findOne({ name: String(customer).trim(), user: ownerId });
     if (!customerDoc) {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer: String(customer).trim(), quantityKg: quantity, amount: totalAmount, user, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
+    const record = new MilkRecord({ customer: String(customer).trim(), customerId: customerDoc._id, quantityKg: quantity, amount: totalAmount, user: ownerId, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {
@@ -344,9 +345,10 @@ exports.getCustomerDetails = async (req, res) => {
 
 exports.updateMilkRecordStatus = async (req, res) => {
   try {
-    const { recordId, status, paidAmount, userId } = req.body;
+    const { recordId, status, paidAmount } = req.body;
+    const userId = String(req.authUser._id);
         
-    if (!recordId || !userId) {
+    if (!recordId) {
       return res.status(400).json({ message: 'Record ID is required.' });
     }
     
@@ -396,10 +398,10 @@ exports.customerPayment = async (req, res) => {
     const end = start.clone().endOf('month');
     
     const records = await MilkRecord.find({
-      customer: customer.name,
       user: userId,
+      $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
       createdAt: { $gte: start.toDate(), $lte: end.toDate() }
-    });
+    }).sort({ createdAt: 1, _id: 1 });
     
     if (records.length === 0) {
       return res.status(404).json({ message: 'No records found for this month.' });
@@ -410,12 +412,12 @@ exports.customerPayment = async (req, res) => {
     const totalPaid = records.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
     const remainingAmount = totalAmount - totalPaid;
     
-    if (amount > remainingAmount) {
+    if (paymentAmount > remainingAmount) {
       return res.status(400).json({ message: 'Payment amount exceeds remaining balance.' });
     }
     
     // Distribute payment across records (prioritize older records)
-    let remainingPayment = amount;
+    let remainingPayment = paymentAmount;
     for (const record of records) {
       if (remainingPayment <= 0) break;
       
@@ -431,9 +433,9 @@ exports.customerPayment = async (req, res) => {
     
     res.json({
       success: true,
-      message: `Payment of ₹${amount} processed successfully.`,
-      totalPaid: totalPaid + amount,
-      remainingAmount: remainingAmount - amount
+      message: `Payment of ₹${paymentAmount} processed successfully.`,
+      totalPaid: totalPaid + paymentAmount,
+      remainingAmount: remainingAmount - paymentAmount
     });
     
   } catch (err) {
