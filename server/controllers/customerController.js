@@ -38,7 +38,7 @@ exports.getAllCustomers = async (req, res) => {
       return res.status(400).json({ message: 'userId is required.' });
     }
     
-    const customers = await Customer.find({ user: userId }, 'name whatsapp _id');
+    const customers = await Customer.find({ user: userId }, 'name whatsapp _id paymentTransactions');
     res.json(customers);
   } catch (err) {
     console.error(err);
