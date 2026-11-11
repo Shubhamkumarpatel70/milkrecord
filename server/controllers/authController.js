@@ -48,9 +48,33 @@ exports.login = async (req, res) => {
 };
 
 exports.customerLogin = async (req, res) => {
-  // WhatsApp number alone is not proof of identity. Keep this endpoint closed
-  // until a real OTP provider and one-time verification flow are configured.
-  return res.status(501).json({ message: 'Customer login is temporarily unavailable. OTP verification is required before customer access can be enabled.' });
+  try {
+    const mobile = String(req.body.mobile || '').replace(/\\D/g, '');
+    if (!validMobile(mobile)) return res.status(400).json({ message: 'Enter a valid 10-digit mobile number.' });
+
+    // Mobile-only access is intentionally limited to one unambiguous customer record.
+    const matches = await Customer.find({ whatsapp: mobile }).select('_id name whatsapp user').limit(2);
+    if (!matches.length) return res.status(404).json({ message: 'This mobile number is not registered by a milk supplier.' });
+    if (matches.length > 1) return res.status(409).json({ message: 'This mobile number is linked to more than one dairy account. Ask your supplier to resolve it before login.' });
+
+    const customer = matches[0];
+    if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) throw new Error('JWT_SECRET must be configured with at least 32 characters.');
+    const token = jwt.sign(
+      { sub: String(customer._id), role: 'customer', ownerId: String(customer.user), sessionType: 'customer' },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h', issuer: 'milk-record-api' }
+    );
+    return res.json({
+      message: 'Customer login successful.',
+      token,
+      userId: String(customer._id),
+      userRole: 'customer',
+      userName: customer.name
+    });
+  } catch (err) {
+    console.error('Customer login error:', err.message);
+    return res.status(500).json({ message: 'Server error.' });
+  }
 };
 
 exports.addPaymentOption = async (req, res) => {
