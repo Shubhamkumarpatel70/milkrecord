@@ -9,7 +9,6 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
   const liveNotifications = Array.isArray(notifications) ? notifications : [];
 
   const filteredNotifications = liveNotifications.filter(n => {
-    if (activeTab === 'unread') return !n.read;
     if (activeTab === 'payment') return n.type === 'payment';
     return true;
   });
@@ -40,7 +39,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
           {/* Filter Tabs */}
           <div className="flex items-center px-4 pt-3 pb-2 gap-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-            {['all', 'unread', 'payment'].map((tab) => (
+            {['all', 'payment'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -119,7 +118,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
           {/* Footer */}
           <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-center">
-            <span className="text-[11px] text-slate-400">Notifications auto-expire after 30 days</span>
+            <span className="text-[11px] text-slate-400">Payment alerts are calculated from your saved customer balances.</span>
           </div>
         </div>
       </div>
