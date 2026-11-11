@@ -421,7 +421,8 @@ export function MainAppContent() {
               onShareCustomer={(u, n, whatsapp) => {
                 const phone = String(whatsapp || '').replace(/\D/g, '');
                 const customerPortalUrl = new URL('/?portal=customer', window.location.origin).toString();
-                const message = `Hello ${n}, your milk records are available online.\n\nOpen your personal customer portal: ${customerPortalUrl}\n\nLogin using the mobile number registered with your milk supplier.`;
+                const supplierName = String(businessProfile?.shopName || user?.name || 'Your milk supplier').trim();
+                const message = `Hello ${n}, your milk records from ${supplierName} are available online.\n\nOpen your personal customer portal: ${customerPortalUrl}\n\nLogin using the mobile number registered with your milk supplier.`;
                 const shareUrl = phone
                   ? `https://wa.me/91${phone}?text=${encodeURIComponent(message)}`
                   : `https://wa.me/?text=${encodeURIComponent(message)}`;
