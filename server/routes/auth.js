@@ -10,6 +10,7 @@ router.post('/customer-login', authController.customerLogin);
 
 // Owner payment settings require a verified owner session.
 router.post('/payment-option', authenticate, authController.addPaymentOption);
+router.get('/payment-option/me', authenticate, authController.getPaymentOption);
 router.get('/payment-option/:userId', authenticate, authController.getPaymentOption);
 router.post('/generate-payment-qr', authenticate, authController.generatePaymentQR);
 
