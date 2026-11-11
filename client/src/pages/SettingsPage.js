@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Settings, Moon, Sun, Globe, Printer, Database, User, Shield, ExternalLink, Save, CheckCircle2, QrCode } from 'lucide-react';
+import { Settings, Globe, Printer, Database, User, Shield, ExternalLink, Save, CheckCircle2, QrCode } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
 export default function SettingsPage({
-  isDarkMode,
-  onToggleDarkMode,
   upiId = '',
   customers = [],
   records = [],
@@ -55,7 +53,7 @@ export default function SettingsPage({
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">SaaS Settings & Configuration</h1>
-            <p className="text-xs text-slate-500">Manage business preferences, theme mode, printer layout, and database backup.</p>
+            <p className="text-xs text-slate-500">Manage business preferences, language, printer layout, and database backup.</p>
           </div>
         </div>
 
@@ -124,42 +122,16 @@ export default function SettingsPage({
         <div className="p-4 sm:p-6 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft space-y-4">
           <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
             <Globe className="w-4 h-4 text-purple-500" />
-            <span>Theme & App Language</span>
+            <span>App Language</span>
           </h3>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            {/* Theme Switcher */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">App Theme</label>
-              <button
-                type="button"
-                onClick={onToggleDarkMode}
-                className="w-full p-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-left flex items-center justify-between text-xs font-semibold text-slate-800 dark:text-slate-100 min-h-[44px]"
-              >
-                <div className="flex items-center gap-2">
-                  {isDarkMode ? <Moon className="w-4 h-4 text-amber-400" /> : <Sun className="w-4 h-4 text-slate-600" />}
-                  <span>{isDarkMode ? 'Dark Mode Active' : 'Light Mode Active'}</span>
-                </div>
-                <span className="text-[10px] text-sky-500 underline font-bold">Toggle Mode</span>
-              </button>
-            </div>
-
-            {/* Language Switcher */}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Language</label>
-              <select
-                value={language}
-                onChange={e => setLanguage(e.target.value)}
-                className="input-field text-xs min-h-[44px]"
-              >
-                <option value="en">English</option>
-                <option value="hi">Hindi (हिंदी)</option>
-                <option value="gu">Gujarati (ગુજરાતી)</option>
-                <option value="mr">Marathi (मराठी)</option>
-              </select>
-            </div>
-
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Language</label>
+            <select value={language} onChange={e => setLanguage(e.target.value)} className="input-field text-xs min-h-[44px]">
+              <option value="en">English</option>
+              <option value="hi">Hindi (हिंदी)</option>
+              <option value="gu">Gujarati (ગુજરાતી)</option>
+              <option value="mr">Marathi (मराठी)</option>
+            </select>
           </div>
         </div>
 

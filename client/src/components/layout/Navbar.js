@@ -16,8 +16,6 @@ function Icon({ name, className = 'w-5 h-5' }) {
     menu: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M4 6h16M4 12h16M4 18h16" />,
     close: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M6 6l12 12M18 6L6 18" />,
     bell: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M18 8a6 6 0 00-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 21h4" /></>,
-    sun: <><circle cx="12" cy="12" r="4" /><path strokeLinecap="round" strokeWidth="1.8" d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42" /></>,
-    moon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M20.5 14.2A8.5 8.5 0 019.8 3.5 8.5 8.5 0 1020.5 14.2z" />,
     settings: <><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-1.7 2.94-.08-.02a1.7 1.7 0 00-1.76.36l-.06.06h-3.4l-.02-.08a1.7 1.7 0 00-1.2-1.2l-.08-.02-2.94 1.7-.06-.06a1.7 1.7 0 00-1.88-.34l-.08.02-1.7-2.94.06-.06A1.7 1.7 0 015.2 15l-.02-.08v-3.4l.08-.02a1.7 1.7 0 001.2-1.2l.02-.08-1.7-2.94.06-.06a1.7 1.7 0 00.34-1.88l-.02-.08 2.94-1.7.06.06a1.7 1.7 0 001.88.34l.08-.02h3.4l.02.08a1.7 1.7 0 001.2 1.2l.08.02 2.94-1.7.06.06a1.7 1.7 0 001.88.34l.08-.02 1.7 2.94-.06.06A1.7 1.7 0 0018.8 9l.02.08v3.4l-.08.02a1.7 1.7 0 00-1.2 1.2l-.02.08z" /></>,
     logout: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 17l5-5-5-5m5 5H3" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 3h6a2 2 0 012 2v14a2 2 0 01-2 2h-6" /></>
   };
@@ -29,9 +27,6 @@ export default function Navbar({
   onNavigate,
   user,
   userRole,
-  isDarkMode,
-  onToggleDarkMode,
-  unreadNotifications = 0,
   onOpenNotifications,
   syncStatus = null,
   onOpenSettings,
@@ -74,10 +69,6 @@ export default function Navbar({
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-emerald-500 shadow-sm">
               <Logo className="h-6 w-6 text-white" />
             </span>
-            <span className="min-w-0">
-              <span className="block truncate text-[15px] font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-base">Milk Record</span>
-              <span className="hidden text-[10px] font-medium tracking-wide text-slate-500 dark:text-slate-400 sm:block">DAIRY MANAGEMENT</span>
-            </span>
           </button>
         </div>
 
@@ -99,25 +90,12 @@ export default function Navbar({
 
           <button
             type="button"
-            onClick={onToggleDarkMode}
-            className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-800"
-            title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-          >
-            <Icon name={isDarkMode ? 'sun' : 'moon'} />
-          </button>
-
-          <button
-            type="button"
             onClick={onOpenNotifications}
             className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:text-slate-300 dark:hover:bg-slate-800"
             title="Notifications"
-            aria-label={unreadNotifications > 0 ? `Notifications, ${unreadNotifications} unread` : 'Notifications'}
+            aria-label="Notifications"
           >
             <Icon name="bell" />
-            {unreadNotifications > 0 && (
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full border-2 border-white bg-rose-500 dark:border-slate-950" />
-            )}
           </button>
 
           {user && (

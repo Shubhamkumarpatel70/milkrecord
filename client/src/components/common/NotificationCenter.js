@@ -6,43 +6,9 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
   if (!isOpen) return null;
 
-  const sampleNotifications = notifications.length > 0 ? notifications : [
-    {
-      id: '1',
-      title: 'Pending Payment Reminder',
-      message: 'Ramesh Kumar has ₹1,200 pending for January milk delivery.',
-      type: 'payment',
-      time: '10 mins ago',
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Daily Milk Collection Update',
-      message: 'Today\'s total milk collection reached 84.5 Kg across 14 customers.',
-      type: 'collection',
-      time: '1 hour ago',
-      read: false
-    },
-    {
-      id: '3',
-      title: 'Sync Completed',
-      message: 'All local milk records synced successfully with cloud server.',
-      type: 'sync',
-      time: '2 hours ago',
-      read: true
-    },
-    {
-      id: '4',
-      title: 'System Update v2.4',
-      message: 'New digital UPI payment receipts and thermal printer support enabled.',
-      type: 'system',
-      time: 'Yesterday',
-      read: true
-    }
-  ];
+  const liveNotifications = Array.isArray(notifications) ? notifications : [];
 
-  const filteredNotifications = sampleNotifications.filter(n => {
-    if (activeTab === 'unread') return !n.read;
+  const filteredNotifications = liveNotifications.filter(n => {
     if (activeTab === 'payment') return n.type === 'payment';
     return true;
   });
@@ -60,7 +26,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
               </div>
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Notification Center</h3>
-                <p className="text-xs text-slate-500">Stay updated on payments & records</p>
+                <p className="text-xs text-slate-500">Only updates from your account appear here</p>
               </div>
             </div>
             <button
@@ -73,7 +39,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
           {/* Filter Tabs */}
           <div className="flex items-center px-4 pt-3 pb-2 gap-2 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 text-xs">
-            {['all', 'unread', 'payment'].map((tab) => (
+            {['all', 'payment'].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -101,7 +67,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
             {filteredNotifications.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
                 <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm font-medium">No notifications in this tab</p>
+                <p className="text-sm font-medium">No real notifications yet</p>
               </div>
             ) : (
               filteredNotifications.map((item) => (
@@ -152,7 +118,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
           {/* Footer */}
           <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 text-center">
-            <span className="text-[11px] text-slate-400">Notifications auto-expire after 30 days</span>
+            <span className="text-[11px] text-slate-400">Payment alerts are calculated from your saved customer balances.</span>
           </div>
         </div>
       </div>
