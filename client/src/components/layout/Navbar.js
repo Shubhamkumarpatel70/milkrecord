@@ -21,7 +21,7 @@ function Icon({ name, className = 'w-5 h-5' }) {
     settings: <><circle cx="12" cy="12" r="3" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M19.4 15a1.7 1.7 0 00.34 1.88l.06.06-1.7 2.94-.08-.02a1.7 1.7 0 00-1.76.36l-.06.06h-3.4l-.02-.08a1.7 1.7 0 00-1.2-1.2l-.08-.02-2.94 1.7-.06-.06a1.7 1.7 0 00-1.88-.34l-.08.02-1.7-2.94.06-.06A1.7 1.7 0 015.2 15l-.02-.08v-3.4l.08-.02a1.7 1.7 0 001.2-1.2l.02-.08-1.7-2.94.06-.06a1.7 1.7 0 00.34-1.88l-.02-.08 2.94-1.7.06.06a1.7 1.7 0 001.88.34l.08-.02h3.4l.02.08a1.7 1.7 0 001.2 1.2l.08.02 2.94-1.7.06.06a1.7 1.7 0 001.88.34l.08-.02 1.7 2.94-.06.06A1.7 1.7 0 0018.8 9l.02.08v3.4l-.08.02a1.7 1.7 0 00-1.2 1.2l-.02.08z" /></>,
     logout: <><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M10 17l5-5-5-5m5 5H3" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.8" d="M12 3h6a2 2 0 012 2v14a2 2 0 01-2 2h-6" /></>
   };
-  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor' strokeWidth="1.8" aria-hidden="true">{paths[name]}</svg>;
+  return <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">{paths[name]}</svg>;
 }
 
 export default function Navbar({
