@@ -150,34 +150,16 @@ export function MainAppContent() {
   const refreshData = async () => {
     const userId = localStorage.getItem('userId') || 'demo';
 
-    if (isDemoMode || !isAuthenticated) {
-      // Demo Data Fallback
-      setTodaysMilkKg(42.5);
-      setTotalMilkQuantityKg(1240);
-      setTotalRevenue(62000);
-      setTotalReceive(48000);
-      setTotalPending(14000);
-      setTotalCustomers(6);
-      setTotalRecords(28);
-      setCustomers([
-        { userId: 'c1', name: 'Ramesh Patel', whatsapp: '9876543210', month: selectedMonth, totalDays: 15, totalAmount: 4500, paidAmount: 3000, status: 'unpaid' },
-        { userId: 'c2', name: 'Suresh Verma', whatsapp: '9876543211', month: selectedMonth, totalDays: 20, totalAmount: 6000, paidAmount: 6000, status: 'paid' },
-        { userId: 'c3', name: 'Anil Sharma', whatsapp: '9876543212', month: selectedMonth, totalDays: 12, totalAmount: 3600, paidAmount: 2000, status: 'unpaid' },
-        { userId: 'c4', name: 'Priya Singh', whatsapp: '9876543213', month: selectedMonth, totalDays: 18, totalAmount: 5400, paidAmount: 5400, status: 'paid' },
-        { userId: 'c5', name: 'Vikram Choudhary', whatsapp: '9876543214', month: selectedMonth, totalDays: 10, totalAmount: 3000, paidAmount: 1500, status: 'unpaid' }
-      ]);
-      setRecords([
-        { _id: 'r1', createdAt: `${selectedMonth}-15`, customer: 'Ramesh Patel', customerName: 'Ramesh Patel', shift: 'morning', quantityKg: 2.5, amount: 125, status: 'paid', paidAmount: 125 },
-        { _id: 'r2', createdAt: `${selectedMonth}-15`, customer: 'Suresh Verma', customerName: 'Suresh Verma', shift: 'evening', quantityKg: 3.0, amount: 150, status: 'unpaid', paidAmount: 0 },
-        { _id: 'r3', createdAt: `${selectedMonth}-14`, customer: 'Anil Sharma', customerName: 'Anil Sharma', shift: 'morning', quantityKg: 4.0, amount: 200, status: 'paid', paidAmount: 200 },
-        { _id: 'r4', createdAt: `${selectedMonth}-14`, customer: 'Priya Singh', customerName: 'Priya Singh', shift: 'evening', quantityKg: 2.0, amount: 100, status: 'paid', paidAmount: 100 }
-      ]);
+    if (!isAuthenticated) {
+      setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
+      setTotalReceive(0); setTotalPending(0); setTotalCustomers(0); setTotalRecords(0);
+      setCustomers([]); setRecords([]);
       return;
     }
 
     try {
       // Fetch Customer Summaries
-      const resSummaries = await axios.get(`/api/milk-records?userId=${userId}`);
+      const resSummaries = await axios.get('/api/milk-records');
       if (Array.isArray(resSummaries.data)) {
         setCustomers(resSummaries.data);
         const revenue = resSummaries.data.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
@@ -188,32 +170,32 @@ export function MainAppContent() {
       }
 
       // Fetch Customer Count
-      const resCustomers = await axios.get(`/api/customers?userId=${userId}`);
+      const resCustomers = await axios.get('/api/customers');
       if (Array.isArray(resCustomers.data)) {
         setTotalCustomers(resCustomers.data.length);
       }
 
       // Fetch Today's Milk
-      const resToday = await axios.get(`/api/milk-records/today?userId=${userId}`);
+      const resToday = await axios.get('/api/milk-records/today');
       if (resToday.data) {
         setTodaysMilkKg(resToday.data.totalQuantityKg || 0);
       }
 
       // Fetch Total Milk
-      const resTotal = await axios.get(`/api/milk-records/total?userId=${userId}`);
+      const resTotal = await axios.get('/api/milk-records/total');
       if (resTotal.data) {
         setTotalMilkQuantityKg(resTotal.data.totalQuantityKg || 0);
         setTotalRecords(resTotal.data.recordCount || 0);
       }
 
       // Fetch Detailed Month Records
-      const resDetails = await axios.get(`/api/milk-records/details?userId=${userId}&month=${selectedMonth}`);
+      const resDetails = await axios.get(`/api/milk-records/details?month=${selectedMonth}`);
       if (resDetails.data && Array.isArray(resDetails.data.records)) {
         setRecords(resDetails.data.records);
       }
 
       // Fetch Payment Option UPI
-      const resUpi = await axios.get(`/api/auth/payment-option/${userId}`);
+      const resUpi = await axios.get('/api/auth/payment-option/me');
       if (resUpi.data && resUpi.data.paymentOptions) {
         setUpiId(resUpi.data.paymentOptions.upiId || '');
       }
@@ -238,7 +220,6 @@ export function MainAppContent() {
           quantityKg: recordForm.quantityKg,
           amount: recordForm.amount || recordForm.quantityKg * 50,
           whatsapp: recordForm.whatsapp,
-          user: userId,
           createdAt: recordForm.date
         });
       }
@@ -259,7 +240,6 @@ export function MainAppContent() {
       if (isAuthenticated) {
         await axios.post('/api/customers', {
           ...customerForm,
-          userId: userId
         });
       }
       setShowAddCustomerModal(false);
@@ -277,7 +257,6 @@ export function MainAppContent() {
       const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         const res = await axios.post('/api/auth/generate-payment-qr', {
-          userId: userId,
           amount: qrAmount || 1000
         });
         setQrCodeData(res.data);
@@ -291,6 +270,17 @@ export function MainAppContent() {
       }
     } catch (err) {
       alert('Failed to generate payment QR code.');
+    }
+  };
+
+  const handleSaveUpiId = async (nextUpiId) => {
+    try {
+      await axios.post('/api/auth/payment-option', { upiId: nextUpiId });
+      setUpiId(nextUpiId);
+      return true;
+    } catch (err) {
+      alert(err.response?.data?.message || 'UPI settings could not be saved.');
+      throw err;
     }
   };
 
@@ -319,9 +309,9 @@ export function MainAppContent() {
     if (!window.confirm(`Are you sure you want to remove customer ${customerName}?`)) return;
     try {
       if (isAuthenticated && customerId) {
-        await axios.delete(`/api/customers/${customerId}?userId=${encodeURIComponent(localStorage.getItem('userId'))}`);
+        await axios.delete(`/api/customers/${customerId}`);
       }
-      setCustomers(prev => prev.filter(c => c._id !== customerId && c.name !== customerName));
+      setCustomers(prev => prev.filter(c => c._id !== customerId));
       refreshData();
     } catch (err) {
       console.error(err);
@@ -411,7 +401,7 @@ export function MainAppContent() {
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
-              onOpenEditRecord={(rec) => alert(`Editing record for ${rec.customerName}`)}
+              onOpenEditRecord={() => alert('Record editing is not available yet. Your existing record has not been changed.')}
               onOpenCalendar={() => setCurrentView('customers')}
             />
           )}
@@ -442,6 +432,7 @@ export function MainAppContent() {
               isDarkMode={isDarkMode}
               onToggleDarkMode={handleToggleDarkMode}
               upiId={upiId}
+              onSaveUpiId={handleSaveUpiId}
             />
           )}
 

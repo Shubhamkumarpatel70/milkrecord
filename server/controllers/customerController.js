@@ -198,9 +198,11 @@ exports.deleteCustomer = async (req, res) => {
     if (!userId) return res.status(400).json({ message: 'userId is required.' });
     const customer = await Customer.findOne({ _id: req.params.customerId, user: userId });
     if (!customer) return res.status(404).json({ message: 'Customer not found.' });
-    await MilkRecord.deleteMany({ user: userId, customer: customer.name });
+    // MilkRecord currently stores customer names rather than a stable customerId.
+    // Deleting records by name can erase another customer's history when names repeat.
+    // Preserve historical milk records until they can be linked by customerId safely.
     await customer.deleteOne();
-    return res.json({ message: 'Customer and associated milk records deleted successfully.' });
+    return res.json({ message: 'Customer deleted. Historical milk records were preserved.' });
   } catch (err) {
     console.error('Delete customer error:', err.message);
     return res.status(400).json({ message: 'Unable to delete customer.' });

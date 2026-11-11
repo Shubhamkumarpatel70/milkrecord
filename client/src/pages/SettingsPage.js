@@ -14,13 +14,15 @@ export default function SettingsPage({
   const [paperSize, setPaperSize] = useState('58mm'); // '58mm' | '80mm' | 'A4'
   const [savedMsg, setSavedMsg] = useState('');
 
-  const handleSaveSettings = (e) => {
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
-    if (onSaveUpiId) {
-      onSaveUpiId(currentUpiId);
+    try {
+      if (onSaveUpiId) await onSaveUpiId(currentUpiId.trim());
+      setSavedMsg('UPI settings saved successfully.');
+      setTimeout(() => setSavedMsg(''), 3000);
+    } catch (error) {
+      setSavedMsg('Could not save settings. Please try again.');
     }
-    setSavedMsg('Settings saved successfully!');
-    setTimeout(() => setSavedMsg(''), 3000);
   };
 
   return (
@@ -92,6 +94,7 @@ export default function SettingsPage({
               placeholder="e.g. yourname@upi or mobile@paytm"
               value={currentUpiId}
               onChange={e => setCurrentUpiId(e.target.value)}
+              maxLength={100}
               className="input-field font-mono min-h-[44px]"
             />
             <p className="text-[11px] text-slate-400 mt-1">This UPI VPA will be encoded in QR codes generated for instant customer payment scans.</p>
