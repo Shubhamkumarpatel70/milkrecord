@@ -293,7 +293,6 @@ export function MainAppContent() {
   const handleLogout = () => {
     ['authToken', 'userId', 'userRole', 'userName'].forEach(key => localStorage.removeItem(key));
     setIsAuthenticated(false);
-    setIsDemoMode(false);
     setUser(null);
     setUserRole('user');
     setCurrentView('dashboard');
@@ -308,7 +307,7 @@ export function MainAppContent() {
   }
 
   if (!isAuthenticated || !localStorage.getItem('authToken')) {
-    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); setIsDemoMode(false); }} />;
+    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); }} />;
   }
 
   const handleDeleteCustomer = async (customerId, customerName) => {
