@@ -786,6 +786,16 @@ export function MainAppContent() {
       <NotificationCenter
         isOpen={showNotifications}
         onClose={() => setShowNotifications(false)}
+        notifications={customers
+          .filter(customer => Number(customer.totalAmount || 0) > Number(customer.paidAmount || 0))
+          .map(customer => ({
+            id: `payment-${customer._id}`,
+            title: 'Pending payment',
+            message: `${customer.name}: ₹${(Number(customer.totalAmount || 0) - Number(customer.paidAmount || 0)).toFixed(2)} outstanding for ${selectedMonth}.`,
+            type: 'payment',
+            time: 'Outstanding',
+            read: false
+          }))}
       />
 
       {/* Onboarding Setup Wizard */}
