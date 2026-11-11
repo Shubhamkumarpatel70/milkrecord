@@ -206,7 +206,7 @@ export default function MilkRecordsPage({
                         </span>
                       </td>
                       <td className="p-4 font-extrabold text-slate-900 dark:text-slate-100">
-                        {rec.quantityKg || rec.quantity || 0} Kg
+                        {rec.quantityKg || rec.quantity || 0} {rec.quantityUnit === 'liter' ? 'Liter' : 'Kg'}
                       </td>
                       <td className="p-4 font-extrabold text-emerald-600 dark:text-emerald-400">
                         ₹{rec.amount || 0}
