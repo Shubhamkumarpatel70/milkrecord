@@ -144,7 +144,7 @@ export function MainAppContent() {
       const profileResponse = await axios.get('/api/auth/business-profile/me');
       const profile = profileResponse.data?.businessProfile || {};
       setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
-      if (!profile.isConfigured && !localStorage.getItem('hasSeenOnboarding')) setShowOnboarding(true);
+      if (!profile.isConfigured) setShowOnboarding(true);
       if (profileResponse.data?.paymentOptions) setUpiId(profileResponse.data.paymentOptions.upiId || '');
 
       // Fetch Customer Summaries
@@ -309,7 +309,6 @@ export function MainAppContent() {
     const profile = response.data.businessProfile || {};
     setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
     setUpiId(response.data.paymentOptions?.upiId || '');
-    localStorage.setItem('hasSeenOnboarding', 'true');
     return response.data;
   };
 
