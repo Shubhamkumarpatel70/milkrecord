@@ -145,3 +145,20 @@ test('returns not found when the selected customer has no milk records for that 
   assert.equal(customerSaveCalls, 0);
   assert.equal(recordSaveCalls, 0);
 });
+
+test('customer list API includes the saved payment transaction ledger', async () => {
+  const customerController = require('../controllers/customerController');
+  const expectedCustomers = [{ _id: 'customer-1', name: 'Ayush', paymentTransactions: [{ amount: 25 }] }];
+  let selectedFields = '';
+  Customer.find = async (query, projection) => {
+    assert.deepEqual(query, { user: 'owner-1' });
+    selectedFields = projection;
+    return expectedCustomers;
+  };
+  const res = response();
+  await customerController.getAllCustomers({ authUser: { _id: 'owner-1' } }, res);
+
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body[0].paymentTransactions[0].amount, 25);
+  assert.match(selectedFields, /paymentTransactions/);
+});
