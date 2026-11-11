@@ -30,6 +30,6 @@ describe('AuthScreen', () => {
     render(<AuthScreen onAuthenticated={jest.fn()} />);
     fireEvent.click(screen.getAllByRole('button', { name: 'Create account' })[0]);
     expect(screen.getByText('Full name')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Create account' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Create account' })).toHaveLength(2);
   });
 });
