@@ -161,7 +161,6 @@ export function MainAppContent() {
       // Fetch Customer Summaries
       const resSummaries = await axios.get('/api/milk-records');
       if (Array.isArray(resSummaries.data)) {
-        setCustomers(resSummaries.data);
         const revenue = resSummaries.data.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
         const receive = resSummaries.data.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
         setTotalRevenue(revenue);
@@ -173,6 +172,18 @@ export function MainAppContent() {
       const resCustomers = await axios.get('/api/customers');
       if (Array.isArray(resCustomers.data)) {
         setTotalCustomers(resCustomers.data.length);
+        const monthSummaries = (Array.isArray(resSummaries.data) ? resSummaries.data : []).filter(item => item.month === selectedMonth);
+        const summaryByName = new Map(monthSummaries.map(item => [item.name, item]));
+        setCustomers(resCustomers.data.map(customer => ({
+          ...summaryByName.get(customer.name),
+          ...customer,
+          name: customer.name,
+          month: selectedMonth,
+          totalDays: summaryByName.get(customer.name)?.totalDays || 0,
+          totalAmount: summaryByName.get(customer.name)?.totalAmount || 0,
+          paidAmount: summaryByName.get(customer.name)?.paidAmount || 0,
+          status: summaryByName.get(customer.name)?.status || 'unpaid'
+        })));
       }
 
       // Fetch Today's Milk
@@ -219,6 +230,7 @@ export function MainAppContent() {
           customer: recordForm.customer,
           quantityKg: recordForm.quantityKg,
           amount: recordForm.amount || recordForm.quantityKg * 50,
+          shift: recordForm.shift,
           whatsapp: recordForm.whatsapp,
           createdAt: recordForm.date
         });

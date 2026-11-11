@@ -5,9 +5,9 @@ const moment = require('moment');
 
 exports.createMilkRecord = async (req, res) => {
   try {
-    const { customer, quantityKg, amount, user, whatsapp, createdAt } = req.body;
+    const { customer, quantityKg, amount, user, whatsapp, createdAt, shift = 'morning' } = req.body;
     const quantity = Number(quantityKg), totalAmount = Number(amount);
-    if (!String(customer || '').trim() || !user || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0) {
+    if (!String(customer || '').trim() || !user || !Number.isFinite(quantity) || quantity <= 0 || !Number.isFinite(totalAmount) || totalAmount < 0 || !['morning', 'evening'].includes(shift)) {
       return res.status(400).json({ message: 'Enter a customer, valid user, positive quantity and non-negative amount.' });
     }
     const entryDate = createdAt ? new Date(createdAt) : new Date();
@@ -19,7 +19,7 @@ exports.createMilkRecord = async (req, res) => {
       return res.status(403).json({ message: 'You can only create records for your own customers.' });
     }
     
-    const record = new MilkRecord({ customer: String(customer).trim(), quantityKg: quantity, amount: totalAmount, user, whatsapp: whatsapp || customerDoc.whatsapp, createdAt: entryDate });
+    const record = new MilkRecord({ customer: String(customer).trim(), quantityKg: quantity, amount: totalAmount, user, whatsapp: whatsapp || customerDoc.whatsapp, shift, createdAt: entryDate });
     await record.save();
     res.status(201).json({ message: 'Milk record saved successfully.', record });
   } catch (err) {

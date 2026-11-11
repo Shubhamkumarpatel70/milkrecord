@@ -5,6 +5,7 @@ const milkRecordSchema = new mongoose.Schema({
   quantityKg: { type: Number, required: true },       // Primary unit (kilograms)
   amount: { type: Number, required: true },
   whatsapp: { type: String, trim: true },
+  shift: { type: String, enum: ['morning', 'evening'], default: 'morning' },
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   status: { type: String, enum: ['paid', 'unpaid'], default: 'unpaid' },
   paidAmount: { type: Number, default: 0 }
