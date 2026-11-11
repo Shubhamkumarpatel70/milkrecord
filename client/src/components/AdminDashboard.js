@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import axios from 'axios';
-import { Activity, Users, Milk, IndianRupee, RefreshCw, Search, ShieldCheck, Store, Pencil, Power, Trash2, LogOut, X, Download, CalendarDays } from 'lucide-react';
+import { Activity, Users, Milk, IndianRupee, RefreshCw, Search, ShieldCheck, Store, Pencil, Power, Trash2, LogOut, X, Download } from 'lucide-react';
 
 const money = value => '₹' + Number(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const date = value => value ? new Date(value).toLocaleDateString('en-IN') : '—';
