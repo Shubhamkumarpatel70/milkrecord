@@ -1,5 +1,6 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
+jest.mock('axios', () => ({ __esModule: true, default: { post: jest.fn() } }));
 import AuthScreen from './components/AuthScreen';
 
 describe('AuthScreen', () => {
