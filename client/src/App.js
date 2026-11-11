@@ -25,6 +25,11 @@ import AdminDashboard from './components/AdminDashboard';
 import AuthScreen from './components/AuthScreen';
 import CustomerPortal from './components/CustomerPortal';
 
+const indiaDateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+}).format(date);
+const indiaMonthKey = (date = new Date()) => indiaDateKey(date).slice(0, 7);
+
 // Configure Axios base URL with fallback
 const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
 const productionURL = process.env.REACT_APP_API_URL || 'https://milkrecord-backend.onrender.com';
@@ -66,7 +71,7 @@ export function MainAppContent() {
   const [totalRecords, setTotalRecords] = useState(0);
   const [customers, setCustomers] = useState([]);
   const [records, setRecords] = useState([]);
-  const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [selectedMonth, setSelectedMonth] = useState(indiaMonthKey());
 
   // Forms
   const [recordForm, setRecordForm] = useState({
@@ -75,7 +80,7 @@ export function MainAppContent() {
     amount: '',
     shift: 'morning',
     whatsapp: '',
-    date: new Date().toISOString().slice(0, 10)
+    date: indiaDateKey()
   });
   const [customerForm, setCustomerForm] = useState({ name: '', whatsapp: '' });
   const [upiId, setUpiId] = useState('');
@@ -236,7 +241,8 @@ export function MainAppContent() {
         });
       }
       setShowAddRecordModal(false);
-      setRecordForm({ customer: '', quantityKg: '', amount: '', shift: 'morning', whatsapp: '', date: new Date().toISOString().slice(0, 10) });
+      setSelectedMonth(String(recordForm.date || indiaDateKey()).slice(0, 7));
+      setRecordForm({ customer: '', quantityKg: '', amount: '', shift: 'morning', whatsapp: '', date: indiaDateKey() });
       refreshData();
       alert('Milk record saved successfully!');
     } catch (err) {
@@ -453,7 +459,7 @@ export function MainAppContent() {
                   ratePerUnit: Number(record.ratePerUnit ?? (Number(record.amount || 0) / Number(record.quantityKg || 1))),
                   quantityUnit: record.quantityUnit || 'kg',
                   shift: record.shift || 'morning',
-                  date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+                  date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : indiaDateKey()
                 });
                 setShowEditRecordModal(true);
               }}
@@ -480,6 +486,8 @@ export function MainAppContent() {
               totalCustomers={totalCustomers}
               customers={customers}
               records={records}
+              selectedMonth={selectedMonth}
+              onMonthChange={setSelectedMonth}
             />
           )}
 
@@ -524,6 +532,14 @@ export function MainAppContent() {
                     Add your first customer
                   </button>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Entry Date</label>
+                <input type="date" required max={indiaDateKey()} value={recordForm.date}
+                  onChange={e => setRecordForm({ ...recordForm, date: e.target.value })}
+                  className="input-field" />
+                <p className="mt-1 text-[11px] text-slate-500">Choose the actual date of the milk delivery. Today is selected by default.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -611,7 +627,7 @@ export function MainAppContent() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Entry Date</label>
-                <input type="date" required max={new Date().toISOString().slice(0, 10)} value={editRecordForm.date} onChange={e => setEditRecordForm({ ...editRecordForm, date: e.target.value })} className="input-field" />
+                <input type="date" required max={indiaDateKey()} value={editRecordForm.date} onChange={e => setEditRecordForm({ ...editRecordForm, date: e.target.value })} className="input-field" />
               </div>
               <div className="flex justify-end gap-3 pt-2">
                 <button type="button" onClick={() => { setShowEditRecordModal(false); setEditingRecordId(null); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
