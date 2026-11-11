@@ -56,7 +56,9 @@ export function MainAppContent() {
   // Data States
   const [loading, setLoading] = useState(true);
   const [todaysMilkKg, setTodaysMilkKg] = useState(0);
+  const [todaysMilkLiter, setTodaysMilkLiter] = useState(0);
   const [totalMilkQuantityKg, setTotalMilkQuantityKg] = useState(0);
+  const [totalMilkQuantityLiter, setTotalMilkQuantityLiter] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [totalReceive, setTotalReceive] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
@@ -132,7 +134,7 @@ export function MainAppContent() {
   const refreshData = useCallback(async () => {
 
     if (!isAuthenticated || userRole === 'customer') {
-      setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
+      setTodaysMilkKg(0); setTodaysMilkLiter(0); setTotalMilkQuantityKg(0); setTotalMilkQuantityLiter(0); setTotalRevenue(0);
       setTotalReceive(0); setTotalPending(0); setTotalCustomers(0); setTotalRecords(0);
       setCustomers([]); setRecords([]);
       return;
@@ -186,12 +188,14 @@ export function MainAppContent() {
       const resToday = await axios.get('/api/milk-records/today');
       if (resToday.data) {
         setTodaysMilkKg(resToday.data.totalQuantityKg || 0);
+        setTodaysMilkLiter(resToday.data.totalQuantityLiter || 0);
       }
 
       // Fetch Total Milk
       const resTotal = await axios.get('/api/milk-records/total');
       if (resTotal.data) {
         setTotalMilkQuantityKg(resTotal.data.totalQuantityKg || 0);
+        setTotalMilkQuantityLiter(resTotal.data.totalQuantityLiter || 0);
         setTotalRecords(resTotal.data.recordCount || 0);
       }
 
@@ -388,7 +392,10 @@ export function MainAppContent() {
           {currentView === 'dashboard' && (
             <DashboardPage
               todaysMilkKg={todaysMilkKg}
+              todaysMilkLiter={todaysMilkLiter}
               totalMilkQuantityKg={totalMilkQuantityKg}
+              totalMilkQuantityLiter={totalMilkQuantityLiter}
+              quantityUnit={businessProfile.quantityUnit}
               totalRevenue={totalRevenue}
               totalReceive={totalReceive}
               totalPending={totalPending}
