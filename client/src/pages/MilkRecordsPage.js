@@ -15,12 +15,21 @@ export default function MilkRecordsPage({
   const [shiftFilter, setShiftFilter] = useState('all'); // 'all' | 'morning' | 'evening'
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Restrict customer view to the selected customer's own records.
+  // Restrict customer view by the record's customer name first.
+  // Older records and some API responses may carry a non-customer value in
+  // customerId; trusting that field alone can incorrectly hide/mix records.
+  // Customer names are unique per owner (enforced by the API), so the
+  // normalized name is the reliable cross-version match. Use ID only when
+  // the record has no customer name at all.
+  const normalizeCustomerName = value => String(value || '').trim().toLocaleLowerCase();
+  const selectedCustomerName = normalizeCustomerName(selectedCustomer?.name);
+  const selectedCustomerId = String(selectedCustomer?._id || '');
   const customerRecords = selectedCustomer
-    ? records.filter(r => {
-        const recordCustomerId = String(r.customerId?._id || r.customerId || '');
-        if (recordCustomerId) return recordCustomerId === String(selectedCustomer._id);
-        return String(r.customerName || r.customer || '').trim().toLowerCase() === String(selectedCustomer.name || '').trim().toLowerCase();
+    ? records.filter(record => {
+        const recordName = normalizeCustomerName(record.customerName || record.customer?.name || record.customer);
+        if (recordName && selectedCustomerName) return recordName === selectedCustomerName;
+        const recordCustomerId = String(record.customerId?._id || record.customerId || '');
+        return Boolean(selectedCustomerId && recordCustomerId === selectedCustomerId);
       })
     : records;
 
