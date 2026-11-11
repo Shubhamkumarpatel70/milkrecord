@@ -6,42 +6,9 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
 
   if (!isOpen) return null;
 
-  const sampleNotifications = notifications.length > 0 ? notifications : [
-    {
-      id: '1',
-      title: 'Pending Payment Reminder',
-      message: 'Ramesh Kumar has ₹1,200 pending for January milk delivery.',
-      type: 'payment',
-      time: '10 mins ago',
-      read: false
-    },
-    {
-      id: '2',
-      title: 'Daily Milk Collection Update',
-      message: 'Today\'s total milk collection reached 84.5 Kg across 14 customers.',
-      type: 'collection',
-      time: '1 hour ago',
-      read: false
-    },
-    {
-      id: '3',
-      title: 'Sync Completed',
-      message: 'All local milk records synced successfully with cloud server.',
-      type: 'sync',
-      time: '2 hours ago',
-      read: true
-    },
-    {
-      id: '4',
-      title: 'System Update v2.4',
-      message: 'New digital UPI payment receipts and thermal printer support enabled.',
-      type: 'system',
-      time: 'Yesterday',
-      read: true
-    }
-  ];
+  const liveNotifications = Array.isArray(notifications) ? notifications : [];
 
-  const filteredNotifications = sampleNotifications.filter(n => {
+  const filteredNotifications = liveNotifications.filter(n => {
     if (activeTab === 'unread') return !n.read;
     if (activeTab === 'payment') return n.type === 'payment';
     return true;
@@ -60,7 +27,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
               </div>
               <div>
                 <h3 className="font-bold text-slate-800 dark:text-slate-100 text-base">Notification Center</h3>
-                <p className="text-xs text-slate-500">Stay updated on payments & records</p>
+                <p className="text-xs text-slate-500">Only updates from your account appear here</p>
               </div>
             </div>
             <button
@@ -101,7 +68,7 @@ export default function NotificationCenter({ isOpen, onClose, notifications = []
             {filteredNotifications.length === 0 ? (
               <div className="text-center py-12 text-slate-400">
                 <Bell className="w-10 h-10 mx-auto mb-2 opacity-30" />
-                <p className="text-sm font-medium">No notifications in this tab</p>
+                <p className="text-sm font-medium">No real notifications yet</p>
               </div>
             ) : (
               filteredNotifications.map((item) => (
