@@ -1,13 +1,17 @@
 const express = require('express');
 const router = express.Router();
 const customerController = require('../controllers/customerController');
+const { authenticate } = require('../middleware/auth');
 
-router.post('/', customerController.createCustomer);
-router.get('/', customerController.getAllCustomers);
-router.get('/:id', customerController.getCustomerById);
+// Owner-managed customer records.
+router.post('/', authenticate, customerController.createCustomer);
+router.get('/', authenticate, customerController.getAllCustomers);
+router.get('/:id', authenticate, customerController.getCustomerById);
+router.delete('/:customerId', authenticate, customerController.deleteCustomer);
 
-// New routes for customer verification and records
-router.post('/:customerId/verify', customerController.verifyCustomerAccess);
-router.get('/:customerId/records', customerController.getCustomerRecords);
+// Customer data endpoints also require an authenticated owner session.
+// Public customer access is disabled until OTP-based identity verification is implemented.
+router.post('/:customerId/verify', authenticate, customerController.verifyCustomerAccess);
+router.get('/:customerId/records', authenticate, customerController.getCustomerRecords);
 
-module.exports = router; 
+module.exports = router;

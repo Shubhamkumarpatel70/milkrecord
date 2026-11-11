@@ -94,7 +94,7 @@ export default function PaymentsPage({
             const total = c.totalAmount || 0;
             const paid = c.paidAmount || 0;
             const remaining = Math.max(0, total - paid);
-            const isPaid = c.status === 'paid' || remaining === 0;
+            const isPaid = total > 0 && (c.status === 'paid' || remaining === 0);
 
             return (
               <div key={c._id || i} className="p-4 flex flex-col gap-3">

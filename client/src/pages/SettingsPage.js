@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Moon, Sun, Globe, Printer, Database, User, Shield, ExternalLink, Save, CheckCircle2, QrCode } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -6,6 +6,8 @@ export default function SettingsPage({
   isDarkMode,
   onToggleDarkMode,
   upiId = '',
+  customers = [],
+  records = [],
   onSaveUpiId
 }) {
   const { language, setLanguage, defaultMilkRate, setDefaultMilkRate } = useSettings();
@@ -14,13 +16,32 @@ export default function SettingsPage({
   const [paperSize, setPaperSize] = useState('58mm'); // '58mm' | '80mm' | 'A4'
   const [savedMsg, setSavedMsg] = useState('');
 
-  const handleSaveSettings = (e) => {
+  useEffect(() => {
+    setCurrentUpiId(upiId);
+  }, [upiId]);
+
+  const handleDownloadBackup = () => {
+    const backup = { app: 'Milk Record', exportedAt: new Date().toISOString(), customers, milkRecords: records };
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `milk-record-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleSaveSettings = async (e) => {
     e.preventDefault();
-    if (onSaveUpiId) {
-      onSaveUpiId(currentUpiId);
+    try {
+      if (onSaveUpiId) await onSaveUpiId(currentUpiId.trim());
+      setSavedMsg('UPI settings saved successfully.');
+      setTimeout(() => setSavedMsg(''), 3000);
+    } catch (error) {
+      setSavedMsg('Could not save settings. Please try again.');
     }
-    setSavedMsg('Settings saved successfully!');
-    setTimeout(() => setSavedMsg(''), 3000);
   };
 
   return (
@@ -92,6 +113,7 @@ export default function SettingsPage({
               placeholder="e.g. yourname@upi or mobile@paytm"
               value={currentUpiId}
               onChange={e => setCurrentUpiId(e.target.value)}
+              maxLength={100}
               className="input-field font-mono min-h-[44px]"
             />
             <p className="text-[11px] text-slate-400 mt-1">This UPI VPA will be encoded in QR codes generated for instant customer payment scans.</p>
@@ -183,11 +205,11 @@ export default function SettingsPage({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 sm:p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/50">
             <div>
               <h4 className="font-bold text-xs text-slate-800 dark:text-slate-200">Cloud & Local Backup</h4>
-              <p className="text-[11px] text-slate-500">Your milk records auto-sync with MongoDB Atlas servers.</p>
+              <p className="text-[11px] text-slate-500">Download a copy of the records currently loaded in this browser. Keep a separate secure backup regularly.</p>
             </div>
             <button
               type="button"
-              onClick={() => alert('Local database backup file downloaded.')}
+              onClick={handleDownloadBackup}
               className="btn-secondary text-xs py-2 px-4 flex items-center gap-1.5 min-h-[38px] w-full sm:w-auto justify-center"
             >
               <Database className="w-4 h-4" />

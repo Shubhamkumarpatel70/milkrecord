@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { SettingsProvider } from './contexts/SettingsContext';
 
@@ -22,6 +22,8 @@ import SettingsPage from './pages/SettingsPage';
 
 // Existing Admin & Auth Components
 import AdminDashboard from './components/AdminDashboard';
+import AuthScreen from './components/AuthScreen';
+import CustomerPortal from './components/CustomerPortal';
 
 // Configure Axios base URL with fallback
 const isDevelopment = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost';
@@ -38,16 +40,19 @@ export function MainAppContent() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [userRole, setUserRole] = useState('user');
   const [user, setUser] = useState(null);
-  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Modals & Panels
   const [showNotifications, setShowNotifications] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showAddRecordModal, setShowAddRecordModal] = useState(false);
+  const [showEditRecordModal, setShowEditRecordModal] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState(null);
+  const [editRecordForm, setEditRecordForm] = useState({ customer: '', quantityKg: '', amount: '', shift: 'morning', date: '' });
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showPaymentQRModal, setShowPaymentQRModal] = useState(false);
   const [showPaymentSettleModal, setShowPaymentSettleModal] = useState(null);
+  const [settlementAmount, setSettlementAmount] = useState('');
 
   // Data States
   const [loading, setLoading] = useState(true);
@@ -89,17 +94,21 @@ export function MainAppContent() {
     }
 
     // Check Auth
+    const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
     const storedRole = localStorage.getItem('userRole');
     const userName = localStorage.getItem('userName');
 
-    if (userId) {
+    if (token && userId) {
       setIsAuthenticated(true);
       setUserRole(storedRole || 'user');
       setUser({ _id: userId, name: userName || 'Dairy Owner', role: storedRole || 'user' });
     } else {
-      setIsDemoMode(true);
-      setUser({ name: 'Demo Dairy User', role: 'demo' });
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      setUser(null);
     }
 
     // Check First-Time Onboarding
@@ -109,6 +118,26 @@ export function MainAppContent() {
     }
 
     setLoading(false);
+  }, []);
+
+  // Attach the signed session to every API request. Never send a client-selected owner identity as authority.
+  useEffect(() => {
+    const interceptor = axios.interceptors.request.use(config => {
+      const token = localStorage.getItem('authToken');
+      if (token) config.headers.Authorization = `Bearer ${token}`;
+      return config;
+    });
+    const responseInterceptor = axios.interceptors.response.use(response => response, error => {
+      if (error.response?.status === 401 && localStorage.getItem('authToken')) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userName');
+        window.location.reload();
+      }
+      return Promise.reject(error);
+    });
+    return () => { axios.interceptors.request.eject(interceptor); axios.interceptors.response.eject(responseInterceptor); };
   }, []);
 
   // Sync Theme
@@ -121,39 +150,19 @@ export function MainAppContent() {
   };
 
   // Fetch Dashboard Stats & Customer Records
-  const refreshData = async () => {
-    const userId = localStorage.getItem('userId') || 'demo';
+  const refreshData = useCallback(async () => {
 
-    if (isDemoMode || !isAuthenticated) {
-      // Demo Data Fallback
-      setTodaysMilkKg(42.5);
-      setTotalMilkQuantityKg(1240);
-      setTotalRevenue(62000);
-      setTotalReceive(48000);
-      setTotalPending(14000);
-      setTotalCustomers(6);
-      setTotalRecords(28);
-      setCustomers([
-        { userId: 'c1', name: 'Ramesh Patel', whatsapp: '9876543210', month: selectedMonth, totalDays: 15, totalAmount: 4500, paidAmount: 3000, status: 'unpaid' },
-        { userId: 'c2', name: 'Suresh Verma', whatsapp: '9876543211', month: selectedMonth, totalDays: 20, totalAmount: 6000, paidAmount: 6000, status: 'paid' },
-        { userId: 'c3', name: 'Anil Sharma', whatsapp: '9876543212', month: selectedMonth, totalDays: 12, totalAmount: 3600, paidAmount: 2000, status: 'unpaid' },
-        { userId: 'c4', name: 'Priya Singh', whatsapp: '9876543213', month: selectedMonth, totalDays: 18, totalAmount: 5400, paidAmount: 5400, status: 'paid' },
-        { userId: 'c5', name: 'Vikram Choudhary', whatsapp: '9876543214', month: selectedMonth, totalDays: 10, totalAmount: 3000, paidAmount: 1500, status: 'unpaid' }
-      ]);
-      setRecords([
-        { _id: 'r1', createdAt: `${selectedMonth}-15`, customer: 'Ramesh Patel', customerName: 'Ramesh Patel', shift: 'morning', quantityKg: 2.5, amount: 125, status: 'paid', paidAmount: 125 },
-        { _id: 'r2', createdAt: `${selectedMonth}-15`, customer: 'Suresh Verma', customerName: 'Suresh Verma', shift: 'evening', quantityKg: 3.0, amount: 150, status: 'unpaid', paidAmount: 0 },
-        { _id: 'r3', createdAt: `${selectedMonth}-14`, customer: 'Anil Sharma', customerName: 'Anil Sharma', shift: 'morning', quantityKg: 4.0, amount: 200, status: 'paid', paidAmount: 200 },
-        { _id: 'r4', createdAt: `${selectedMonth}-14`, customer: 'Priya Singh', customerName: 'Priya Singh', shift: 'evening', quantityKg: 2.0, amount: 100, status: 'paid', paidAmount: 100 }
-      ]);
+    if (!isAuthenticated || userRole === 'customer') {
+      setTodaysMilkKg(0); setTotalMilkQuantityKg(0); setTotalRevenue(0);
+      setTotalReceive(0); setTotalPending(0); setTotalCustomers(0); setTotalRecords(0);
+      setCustomers([]); setRecords([]);
       return;
     }
 
     try {
       // Fetch Customer Summaries
-      const resSummaries = await axios.get(`/api/milk-records?userId=${userId}`);
+      const resSummaries = await axios.get('/api/milk-records');
       if (Array.isArray(resSummaries.data)) {
-        setCustomers(resSummaries.data);
         const revenue = resSummaries.data.reduce((sum, s) => sum + (s.totalAmount || 0), 0);
         const receive = resSummaries.data.reduce((sum, s) => sum + (s.paidAmount || 0), 0);
         setTotalRevenue(revenue);
@@ -162,32 +171,53 @@ export function MainAppContent() {
       }
 
       // Fetch Customer Count
-      const resCustomers = await axios.get(`/api/customers?userId=${userId}`);
+      const resCustomers = await axios.get('/api/customers');
       if (Array.isArray(resCustomers.data)) {
         setTotalCustomers(resCustomers.data.length);
+        const monthSummaries = (Array.isArray(resSummaries.data) ? resSummaries.data : []).filter(item => item.month === selectedMonth);
+        const summaryById = new Map(monthSummaries.filter(item => item._id).map(item => [String(item._id), item]));
+        const legacySummaryByName = new Map(monthSummaries.filter(item => !item._id).map(item => [item.name, item]));
+        const nameCounts = resCustomers.data.reduce((counts, customer) => {
+          counts[customer.name] = (counts[customer.name] || 0) + 1;
+          return counts;
+        }, {});
+        setCustomers(resCustomers.data.map(customer => {
+          const summary = summaryById.get(String(customer._id)) ||
+            (nameCounts[customer.name] === 1 ? legacySummaryByName.get(customer.name) : null);
+          return {
+            ...summary,
+            ...customer,
+            name: customer.name,
+            month: selectedMonth,
+            totalDays: summary?.totalDays || 0,
+            totalAmount: summary?.totalAmount || 0,
+            paidAmount: summary?.paidAmount || 0,
+            status: summary?.status || 'unpaid'
+          };
+        }));
       }
 
       // Fetch Today's Milk
-      const resToday = await axios.get(`/api/milk-records/today?userId=${userId}`);
+      const resToday = await axios.get('/api/milk-records/today');
       if (resToday.data) {
         setTodaysMilkKg(resToday.data.totalQuantityKg || 0);
       }
 
       // Fetch Total Milk
-      const resTotal = await axios.get(`/api/milk-records/total?userId=${userId}`);
+      const resTotal = await axios.get('/api/milk-records/total');
       if (resTotal.data) {
         setTotalMilkQuantityKg(resTotal.data.totalQuantityKg || 0);
         setTotalRecords(resTotal.data.recordCount || 0);
       }
 
       // Fetch Detailed Month Records
-      const resDetails = await axios.get(`/api/milk-records/details?userId=${userId}&month=${selectedMonth}`);
+      const resDetails = await axios.get(`/api/milk-records/details?month=${selectedMonth}`);
       if (resDetails.data && Array.isArray(resDetails.data.records)) {
         setRecords(resDetails.data.records);
       }
 
       // Fetch Payment Option UPI
-      const resUpi = await axios.get(`/api/auth/payment-option/${userId}`);
+      const resUpi = await axios.get('/api/auth/payment-option/me');
       if (resUpi.data && resUpi.data.paymentOptions) {
         setUpiId(resUpi.data.paymentOptions.upiId || '');
       }
@@ -195,24 +225,23 @@ export function MainAppContent() {
     } catch (err) {
       console.error('Failed to fetch dairy records:', err);
     }
-  };
+  }, [isAuthenticated, selectedMonth, userRole]);
 
   useEffect(() => {
     refreshData();
-  }, [isAuthenticated, isDemoMode, selectedMonth]);
+  }, [refreshData]);
 
   // Record Entry Submission
   const handleSaveRecord = async (e) => {
     e.preventDefault();
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         await axios.post('/api/milk-records', {
           customer: recordForm.customer,
           quantityKg: recordForm.quantityKg,
           amount: recordForm.amount || recordForm.quantityKg * 50,
+          shift: recordForm.shift,
           whatsapp: recordForm.whatsapp,
-          user: userId,
           createdAt: recordForm.date
         });
       }
@@ -225,15 +254,33 @@ export function MainAppContent() {
     }
   };
 
+  const handleUpdateRecord = async (e) => {
+    e.preventDefault();
+    if (!editingRecordId) return;
+    try {
+      await axios.put(`/api/milk-records/${editingRecordId}`, {
+        customer: editRecordForm.customer,
+        quantityKg: editRecordForm.quantityKg,
+        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50,
+        shift: editRecordForm.shift,
+        createdAt: editRecordForm.date
+      });
+      setShowEditRecordModal(false);
+      setEditingRecordId(null);
+      await refreshData();
+      alert('Milk record updated successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to update milk record.');
+    }
+  };
+
   // Customer Submission
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         await axios.post('/api/customers', {
           ...customerForm,
-          userId: userId
         });
       }
       setShowAddCustomerModal(false);
@@ -248,10 +295,8 @@ export function MainAppContent() {
   // Generate Payment QR Code
   const handleGenerateQR = async () => {
     try {
-      const userId = localStorage.getItem('userId') || 'demo';
       if (isAuthenticated) {
         const res = await axios.post('/api/auth/generate-payment-qr', {
-          userId: userId,
           amount: qrAmount || 1000
         });
         setQrCodeData(res.data);
@@ -268,10 +313,22 @@ export function MainAppContent() {
     }
   };
 
+  const handleSaveUpiId = async (nextUpiId) => {
+    try {
+      await axios.post('/api/auth/payment-option', { upiId: nextUpiId });
+      setUpiId(nextUpiId);
+      return true;
+    } catch (err) {
+      alert(err.response?.data?.message || 'UPI settings could not be saved.');
+      throw err;
+    }
+  };
+
   const handleLogout = () => {
-    localStorage.clear();
+    ['authToken', 'userId', 'userRole', 'userName'].forEach(key => localStorage.removeItem(key));
     setIsAuthenticated(false);
-    setIsDemoMode(true);
+    setUser(null);
+    setUserRole('user');
     setCurrentView('dashboard');
   };
 
@@ -283,13 +340,21 @@ export function MainAppContent() {
     );
   }
 
+  if (!isAuthenticated || !localStorage.getItem('authToken')) {
+    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); }} />;
+  }
+
+  if (userRole === 'customer') {
+    return <CustomerPortal onLogout={handleLogout} customerName={user?.name} />;
+  }
+
   const handleDeleteCustomer = async (customerId, customerName) => {
     if (!window.confirm(`Are you sure you want to remove customer ${customerName}?`)) return;
     try {
       if (isAuthenticated && customerId) {
         await axios.delete(`/api/customers/${customerId}`);
       }
-      setCustomers(prev => prev.filter(c => c._id !== customerId && c.name !== customerName));
+      setCustomers(prev => prev.filter(c => c._id !== customerId));
       refreshData();
     } catch (err) {
       console.error(err);
@@ -367,7 +432,11 @@ export function MainAppContent() {
                 const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
                 window.open(url, '_blank');
               }}
-              onMarkPayment={(cust) => setShowPaymentSettleModal(cust)}
+              onMarkPayment={(cust) => {
+                const due = Math.max(0, Number(cust.totalAmount || 0) - Number(cust.paidAmount || 0));
+                setSettlementAmount(due.toFixed(2));
+                setShowPaymentSettleModal(cust);
+              }}
               onDeleteCustomer={handleDeleteCustomer}
               isAuthenticated={isAuthenticated}
             />
@@ -379,7 +448,17 @@ export function MainAppContent() {
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
-              onOpenEditRecord={(rec) => alert(`Editing record for ${rec.customerName}`)}
+              onOpenEditRecord={(record) => {
+                setEditingRecordId(record._id);
+                setEditRecordForm({
+                  customer: record.customerName || record.customer || '',
+                  quantityKg: record.quantityKg || record.quantity || '',
+                  amount: record.amount || '',
+                  shift: record.shift || 'morning',
+                  date: record.createdAt ? new Date(record.createdAt).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10)
+                });
+                setShowEditRecordModal(true);
+              }}
               onOpenCalendar={() => setCurrentView('customers')}
             />
           )}
@@ -402,6 +481,7 @@ export function MainAppContent() {
               totalRevenue={totalRevenue}
               totalCustomers={totalCustomers}
               customers={customers}
+              records={records}
             />
           )}
 
@@ -410,6 +490,9 @@ export function MainAppContent() {
               isDarkMode={isDarkMode}
               onToggleDarkMode={handleToggleDarkMode}
               upiId={upiId}
+              customers={customers}
+              records={records}
+              onSaveUpiId={handleSaveUpiId}
             />
           )}
 
@@ -428,14 +511,23 @@ export function MainAppContent() {
             <form onSubmit={handleSaveRecord} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name</label>
-                <input
-                  type="text"
+                <select
                   required
                   value={recordForm.customer}
-                  onChange={e => setRecordForm({ ...recordForm, customer: e.target.value })}
+                  onChange={e => {
+                    const selected = customers.find(customer => customer.name === e.target.value);
+                    setRecordForm({ ...recordForm, customer: e.target.value, whatsapp: selected?.whatsapp || '' });
+                  }}
                   className="input-field"
-                  placeholder="e.g. Ramesh Patel"
-                />
+                >
+                  <option value="">Select a customer</option>
+                  {customers.map(customer => <option key={customer._id} value={customer.name}>{customer.name}</option>)}
+                </select>
+                {customers.length === 0 && (
+                  <button type="button" onClick={() => { setShowAddRecordModal(false); setShowAddCustomerModal(true); }} className="text-xs text-sky-600 font-semibold mt-2">
+                    Add your first customer
+                  </button>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -489,6 +581,49 @@ export function MainAppContent() {
                 >
                   Save Milk Entry
                 </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Milk Record Modal */}
+      {showEditRecordModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800">
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-4">Edit Milk Entry</h3>
+            <form onSubmit={handleUpdateRecord} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Customer Name</label>
+                <select required value={editRecordForm.customer} onChange={e => setEditRecordForm({ ...editRecordForm, customer: e.target.value })} className="input-field">
+                  <option value="">Select customer</option>
+                  {customers.map(customer => <option key={customer._id} value={customer.name}>{customer.name}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantity (Kg)</label>
+                  <input type="number" min="0.01" step="0.01" required value={editRecordForm.quantityKg} onChange={e => setEditRecordForm({ ...editRecordForm, quantityKg: e.target.value })} className="input-field" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Shift</label>
+                  <select value={editRecordForm.shift} onChange={e => setEditRecordForm({ ...editRecordForm, shift: e.target.value })} className="input-field">
+                    <option value="morning">Morning</option>
+                    <option value="evening">Evening</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Amount (₹)</label>
+                <input type="number" min="0" step="0.01" required value={editRecordForm.amount} onChange={e => setEditRecordForm({ ...editRecordForm, amount: e.target.value })} className="input-field" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Entry Date</label>
+                <input type="date" required max={new Date().toISOString().slice(0, 10)} value={editRecordForm.date} onChange={e => setEditRecordForm({ ...editRecordForm, date: e.target.value })} className="input-field" />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button type="button" onClick={() => { setShowEditRecordModal(false); setEditingRecordId(null); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
+                <button type="submit" className="btn-primary text-xs py-2 px-5">Save Changes</button>
               </div>
             </form>
           </div>
@@ -610,33 +745,55 @@ export function MainAppContent() {
       {showPaymentSettleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl max-w-md w-full border border-slate-200 dark:border-slate-800">
-            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Mark Payment Settle</h3>
+            <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Record Customer Payment</h3>
             <p className="text-xs text-slate-500 mb-4">Customer: <strong className="text-sky-600">{showPaymentSettleModal.name}</strong></p>
-            <div className="space-y-3 text-xs mb-6 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
+            <div className="space-y-3 text-xs mb-5 bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl">
               <div className="flex justify-between"><span>Total Amount:</span><span className="font-bold">₹{showPaymentSettleModal.totalAmount || 0}</span></div>
               <div className="flex justify-between"><span>Paid Amount:</span><span className="font-bold text-emerald-600">₹{showPaymentSettleModal.paidAmount || 0}</span></div>
               <div className="flex justify-between border-t pt-2"><span>Remaining Dues:</span><span className="font-bold text-rose-600">₹{Math.max(0, (showPaymentSettleModal.totalAmount || 0) - (showPaymentSettleModal.paidAmount || 0))}</span></div>
             </div>
+            <div className="mb-5">
+              <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1">Amount received (₹)</label>
+              <input
+                type="number"
+                min="0.01"
+                max={Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0))}
+                step="0.01"
+                value={settlementAmount}
+                onChange={e => setSettlementAmount(e.target.value)}
+                className="input-field"
+                required
+              />
+            </div>
             <div className="flex justify-end gap-3">
-              <button onClick={() => setShowPaymentSettleModal(null)} className="btn-secondary text-xs py-2 px-4">Cancel</button>
+              <button onClick={() => { setShowPaymentSettleModal(null); setSettlementAmount(''); }} className="btn-secondary text-xs py-2 px-4">Cancel</button>
               <button
                 onClick={async () => {
-                  if (isAuthenticated && showPaymentSettleModal._id) {
-                    try {
-                      await axios.put('/api/milk-records/status', {
-                        recordId: showPaymentSettleModal._id,
-                        status: 'paid',
-                        paidAmount: showPaymentSettleModal.totalAmount
-                      });
-                    } catch (err) {}
+                  const amountToRecord = Math.round(Number(settlementAmount) * 100) / 100;
+                  const remaining = Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0));
+                  if (!showPaymentSettleModal._id || !Number.isFinite(amountToRecord) || amountToRecord <= 0 || amountToRecord > remaining) {
+                    alert('Enter a valid amount within the remaining balance.');
+                    return;
+                  }
+                  try {
+                    await axios.post('/api/milk-records/payment', {
+                      customerId: showPaymentSettleModal._id,
+                      amount: amountToRecord,
+                      month: showPaymentSettleModal.month
+                    });
+                  } catch (err) {
+                    alert(err.response?.data?.message || 'Payment could not be recorded. Please try again.');
+                    return;
                   }
                   setShowPaymentSettleModal(null);
-                  refreshData();
-                  alert(`Payment marked as settled for ${showPaymentSettleModal.name}!`);
+                  setSettlementAmount('');
+                  await refreshData();
+                  alert(`Payment of ₹${amountToRecord.toFixed(2)} recorded for ${showPaymentSettleModal.name}.`);
                 }}
                 className="btn-primary text-xs py-2 px-5"
+                disabled={!settlementAmount || Number(settlementAmount) <= 0 || Number(settlementAmount) > Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0))}
               >
-                Confirm Full Payment
+                Record Payment
               </button>
             </div>
           </div>

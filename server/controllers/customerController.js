@@ -3,12 +3,22 @@ const MilkRecord = require('../models/MilkRecord'); // Added this import for get
 
 exports.createCustomer = async (req, res) => {
   try {
-    const { name, whatsapp, userId } = req.body;
-    if (!name || !userId) {
-      return res.status(400).json({ message: 'Name and userId are required.' });
+    const { name, whatsapp } = req.body;
+    const normalizedName = String(name || '').trim();
+    const normalizedWhatsApp = String(whatsapp || '').replace(/[^0-9]/g, '');
+    if (!normalizedName) {
+      return res.status(400).json({ message: 'Customer name is required.' });
     }
-    
-    const customer = new Customer({ name, whatsapp, user: userId });
+    if (!normalizedWhatsApp) {
+      return res.status(400).json({ message: 'WhatsApp number is required.' });
+    }
+    if (!/^[6-9][0-9]{9}$/.test(normalizedWhatsApp)) {
+      return res.status(400).json({ message: 'Enter a valid 10-digit Indian WhatsApp number.' });
+    }
+    const ownerId = req.authUser._id;
+    const duplicate = await Customer.findOne({ user: ownerId, name: normalizedName });
+    if (duplicate) return res.status(409).json({ message: 'A customer with this name already exists.' });
+    const customer = new Customer({ name: normalizedName, whatsapp: normalizedWhatsApp, user: ownerId });
     await customer.save();
     
     res.status(201).json({ message: 'Customer added successfully!', customer });
@@ -23,7 +33,7 @@ exports.createCustomer = async (req, res) => {
 
 exports.getAllCustomers = async (req, res) => {
   try {
-    const { userId } = req.query;
+    const userId = String(req.authUser._id);
     if (!userId) {
       return res.status(400).json({ message: 'userId is required.' });
     }
@@ -38,8 +48,8 @@ exports.getAllCustomers = async (req, res) => {
 
 exports.getCustomerById = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const customer = await Customer.findById(req.params.id);
+    const userId = String(req.authUser._id);
+    const customer = await Customer.findOne({ _id: req.params.id, user: req.authUser._id });
     
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -67,7 +77,7 @@ exports.verifyCustomerAccess = async (req, res) => {
     }
     
     // Find customer by ID and verify WhatsApp number
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({ _id: customerId, user: req.authUser._id });
     
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
@@ -99,12 +109,12 @@ exports.getCustomerRecords = async (req, res) => {
     const { customerId } = req.params;
     const { month } = req.query;
     
-    if (!month) {
-      return res.status(400).json({ message: 'Month parameter is required (YYYY-MM format).' });
+    if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(String(month || ''))) {
+      return res.status(400).json({ message: 'Month parameter must use YYYY-MM format.' });
     }
     
     // Get customer details
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findOne({ _id: customerId, user: req.authUser._id });
     if (!customer) {
       return res.status(404).json({ message: 'Customer not found.' });
     }
@@ -113,10 +123,15 @@ exports.getCustomerRecords = async (req, res) => {
     const start = new Date(month + '-01');
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     
+    const sameNameCustomers = await Customer.find({ user: customer.user, name: customer.name }).select('_id');
+    if (sameNameCustomers.length > 1) {
+      return res.status(409).json({ message: 'This customer name is shared by multiple customers. Resolve duplicate names before viewing legacy history.' });
+    }
+    const nextMonth = new Date(start.getFullYear(), start.getMonth() + 1, 1);
     const records = await MilkRecord.find({
-      customer: customer.name,
       user: customer.user,
-      createdAt: { $gte: start, $lte: end }
+      $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
+      createdAt: { $gte: start, $lt: nextMonth }
     }).sort({ createdAt: 1 });
     
     // Build a map of date -> records (array of records for each day)
@@ -183,7 +198,7 @@ exports.getCustomerRecords = async (req, res) => {
         totalAmount,
         totalPaid,
         remainingAmount: totalAmount - totalPaid,
-        totalDays: records.length
+        totalDays: new Set(records.map(record => record.createdAt.toISOString().slice(0, 10))).size
       }
     });
   } catch (err) {
@@ -191,3 +206,20 @@ exports.getCustomerRecords = async (req, res) => {
     res.status(500).json({ message: 'Server error.' });
   }
 }; 
+
+exports.deleteCustomer = async (req, res) => {
+  try {
+    const userId = String(req.authUser._id);
+    if (!userId) return res.status(400).json({ message: 'userId is required.' });
+    const customer = await Customer.findOne({ _id: req.params.customerId, user: userId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+    // MilkRecord currently stores customer names rather than a stable customerId.
+    // Deleting records by name can erase another customer's history when names repeat.
+    // Preserve historical milk records until they can be linked by customerId safely.
+    await customer.deleteOne();
+    return res.json({ message: 'Customer deleted. Historical milk records were preserved.' });
+  } catch (err) {
+    console.error('Delete customer error:', err.message);
+    return res.status(400).json({ message: 'Unable to delete customer.' });
+  }
+};

@@ -49,7 +49,10 @@ exports.updateUser = async (req, res) => {
     // Update basic fields
     user.name = name;
     user.mobile = mobile;
-    if (mpin) user.mpin = mpin;
+    if (mpin) {
+      if (!/^[0-9]{5}$/.test(String(mpin))) return res.status(400).json({ message: 'MPIN must be exactly 5 digits.' });
+      user.mpin = await require('bcryptjs').hash(String(mpin), 12);
+    }
     user.isActive = isActive;
 
     // Update payment options
@@ -62,7 +65,8 @@ exports.updateUser = async (req, res) => {
     }
 
     await user.save();
-    res.json({ message: 'User updated successfully.', user });
+    const safeUser = await User.findById(user._id).select('-mpin');
+    res.json({ message: 'User updated successfully.', user: safeUser });
   } catch (err) {
     console.error('Error updating user:', err);
     res.status(500).json({ message: 'Server error.' });
