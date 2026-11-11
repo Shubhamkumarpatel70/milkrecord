@@ -190,12 +190,14 @@ exports.getTodaysMilkQuantity = async (req, res) => {
     });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = todaysRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = todaysRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = todaysRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Today's total milk quantity for user ${userId}: ${totalQuantityKg}kg from ${todaysRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: todaysRecords.length,
       date: today.toISOString().slice(0, 10)
     });
@@ -218,12 +220,14 @@ exports.getTotalMilkQuantity = async (req, res) => {
     const allRecords = await MilkRecord.find({ user: userId });
     
     // Calculate total quantity in kg only
-    const totalQuantityKg = allRecords.reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityKg = allRecords.filter(record => record.quantityUnit !== 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
+    const totalQuantityLiter = allRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (record.quantityKg || 0), 0);
     
     console.log(`Total milk quantity (all-time) for user ${userId}: ${totalQuantityKg}kg from ${allRecords.length} records`);
     
     res.json({
-      totalQuantityKg: totalQuantityKg,
+      totalQuantityKg,
+      totalQuantityLiter,
       recordCount: allRecords.length
     });
   } catch (err) {
