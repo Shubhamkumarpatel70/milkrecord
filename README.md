@@ -262,3 +262,14 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ⭐ **Star this repository if you find it helpful!**
 # Build fix update
+
+## Existing data migration: customer links
+
+New milk entries are linked to a stable customer ID. To link older records safely, first create a MongoDB backup, then run the migration from the `server` directory in an environment that has the production `MONGODB_URI` configured:
+
+```bash
+npm ci
+npm run migrate:customer-links
+```
+
+The migration is idempotent. It links a historical milk record only when exactly one customer with the same name exists for that owner. Ambiguous or missing matches are skipped and reported; no milk quantities or payment amounts are changed. Review the counts and resolve any skipped duplicate names manually before retrying.
