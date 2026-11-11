@@ -10,17 +10,17 @@ export default function OnboardingWizard({ isOpen, onClose, onComplete }) {
 
   const handleNext = async () => {
     setError('');
-    if (step === 1 && formData.businessName.trim().length < 2) return setError('Shop / brand name enter karein (minimum 2 characters).');
+    if (step === 1 && formData.businessName.trim().length < 2) return setError('Please enter a shop or business name with at least 2 characters.');
     if (step === 2) {
       const rate = Number(formData.defaultRatePerKg);
-      if (!Number.isFinite(rate) || rate < 0) return setError('Valid milk rate enter karein.');
+      if (!Number.isFinite(rate) || rate < 0) return setError('Please enter a valid milk rate.');
       setSaving(true);
       try {
         const saved = await onComplete?.({ ...formData, businessName: formData.businessName.trim(), defaultRatePerKg: rate });
         if (saved === false) return;
         if (onClose) onClose();
       } catch (err) {
-        setError(err.message || 'Setup save nahi hua. Dobara try karein.');
+        setError(err.message || 'We could not save your setup. Please try again.');
       } finally { setSaving(false); }
       return;
     }
@@ -37,11 +37,11 @@ export default function OnboardingWizard({ isOpen, onClose, onComplete }) {
         <div className="space-y-5 p-6 sm:p-8">
           {step===1 ? <>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-sky-100 text-sky-700"><Store className="h-7 w-7"/></div>
-            <div><h2 className="text-2xl font-bold text-slate-900">Enter your shop / brand name</h2><p className="mt-2 text-sm text-slate-500">Yahi naam aapke dairy workspace aur business profile mein show hoga.</p></div>
+            <div><h2 className="text-2xl font-bold text-slate-900">Enter your shop / brand name</h2><p className="mt-2 text-sm text-slate-500">This name will appear in your dairy account and business profile.</p></div>
             <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Shop / Brand Name</label><input autoFocus required minLength="2" maxLength="100" value={formData.businessName} onChange={e=>setFormData({...formData,businessName:e.target.value})} placeholder="e.g. Shree Krishna Dairy" className="input-field min-h-12"/></div>
           </> : <>
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-emerald-700"><Milk className="h-7 w-7"/></div>
-            <div><h2 className="text-2xl font-bold text-slate-900">Set your milk rate</h2><p className="mt-2 text-sm text-slate-500">Aapka set kiya hua rate aapke dairy account ki har new milk entry mein auto calculate hoga.</p></div>
+            <div><h2 className="text-2xl font-bold text-slate-900">Set your milk rate</h2><p className="mt-2 text-sm text-slate-500">This rate will be used to calculate the amount for each new milk entry.</p></div>
             <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Quantity Type</label><div className="grid grid-cols-2 gap-3">{[{value:'kg',label:'Kilogram (Kg)'},{value:'liter',label:'Liter (L)'}].map(x=><button key={x.value} type="button" onClick={()=>setFormData({...formData,quantityUnit:x.value})} className={'min-h-12 rounded-xl border px-3 font-semibold '+(formData.quantityUnit===x.value?'border-sky-500 bg-sky-50 text-sky-700':'border-slate-200 text-slate-600')}>{x.label}</button>)}</div></div>
             <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Default Milk Rate (₹ / {formData.quantityUnit==='kg'?'Kg':'Liter'})</label><input autoFocus type="number" min="0" max="100000" step="0.01" required value={formData.defaultRatePerKg} onChange={e=>setFormData({...formData,defaultRatePerKg:e.target.value})} className="input-field min-h-12" placeholder="50.00"/></div>
             <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-semibold text-emerald-700">Preview</p><p className="mt-1 text-lg font-bold text-emerald-900">2 {formData.quantityUnit==='kg'?'Kg':'Liter'} × ₹{(Number(formData.defaultRatePerKg)||0).toFixed(2)} = ₹{(2*(Number(formData.defaultRatePerKg)||0)).toFixed(2)}</p></div>
