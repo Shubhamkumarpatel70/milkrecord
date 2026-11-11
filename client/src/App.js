@@ -77,6 +77,7 @@ export function MainAppContent() {
   });
   const [customerForm, setCustomerForm] = useState({ name: '', whatsapp: '' });
   const [upiId, setUpiId] = useState('');
+  const [businessProfile, setBusinessProfile] = useState({ shopName: '', milkRate: 50, quantityUnit: 'kg', isConfigured: false });
   const [qrCodeData, setQrCodeData] = useState(null);
   const [qrAmount, setQrAmount] = useState('');
 
@@ -102,12 +103,6 @@ export function MainAppContent() {
       localStorage.removeItem('userRole');
       localStorage.removeItem('userName');
       setUser(null);
-    }
-
-    // Check First-Time Onboarding
-    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
-    if (!hasSeenOnboarding) {
-      setShowOnboarding(true);
     }
 
     setLoading(false);
@@ -144,6 +139,12 @@ export function MainAppContent() {
     }
 
     try {
+      const profileResponse = await axios.get('/api/auth/business-profile/me');
+      const profile = profileResponse.data?.businessProfile || {};
+      setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
+      if (!profile.isConfigured && !localStorage.getItem('hasSeenOnboarding')) setShowOnboarding(true);
+      if (profileResponse.data?.paymentOptions) setUpiId(profileResponse.data.paymentOptions.upiId || '');
+
       // Fetch Customer Summaries
       const resSummaries = await axios.get('/api/milk-records');
       if (Array.isArray(resSummaries.data)) {
@@ -223,7 +224,8 @@ export function MainAppContent() {
         await axios.post('/api/milk-records', {
           customer: recordForm.customer,
           quantityKg: recordForm.quantityKg,
-          amount: recordForm.amount || recordForm.quantityKg * 50,
+          amount: recordForm.amount || Number(recordForm.quantityKg) * Number(businessProfile.milkRate || 0),
+          quantityUnit: businessProfile.quantityUnit || 'kg',
           shift: recordForm.shift,
           whatsapp: recordForm.whatsapp,
           createdAt: recordForm.date
@@ -245,7 +247,8 @@ export function MainAppContent() {
       await axios.put(`/api/milk-records/${editingRecordId}`, {
         customer: editRecordForm.customer,
         quantityKg: editRecordForm.quantityKg,
-        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * 50,
+        amount: editRecordForm.amount || Number(editRecordForm.quantityKg) * Number(businessProfile.milkRate || 0),
+        quantityUnit: businessProfile.quantityUnit || 'kg',
         shift: editRecordForm.shift,
         createdAt: editRecordForm.date
       });
@@ -297,15 +300,13 @@ export function MainAppContent() {
     }
   };
 
-  const handleSaveUpiId = async (nextUpiId) => {
-    try {
-      await axios.post('/api/auth/payment-option', { upiId: nextUpiId });
-      setUpiId(nextUpiId);
-      return true;
-    } catch (err) {
-      alert(err.response?.data?.message || 'UPI settings could not be saved.');
-      throw err;
-    }
+  const handleSaveConfiguration = async (configuration) => {
+    const response = await axios.put('/api/auth/business-profile/me', configuration);
+    const profile = response.data.businessProfile || {};
+    setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
+    setUpiId(response.data.paymentOptions?.upiId || '');
+    localStorage.setItem('hasSeenOnboarding', 'true');
+    return response.data;
   };
 
   const handleLogout = () => {
@@ -475,10 +476,9 @@ export function MainAppContent() {
 
           {currentView === 'settings' && (
             <SettingsPage
+              businessProfile={businessProfile}
               upiId={upiId}
-              customers={customers}
-              records={records}
-              onSaveUpiId={handleSaveUpiId}
+              onSaveConfiguration={handleSaveConfiguration}
             />
           )}
 
@@ -806,9 +806,13 @@ export function MainAppContent() {
       <OnboardingWizard
         isOpen={showOnboarding}
         onClose={() => setShowOnboarding(false)}
-        onComplete={(data) => {
-          localStorage.setItem('hasSeenOnboarding', 'true');
-          if (data.upiId) setUpiId(data.upiId);
+        onComplete={async (data) => {
+          try {
+            await handleSaveConfiguration({ shopName: data.businessName, milkRate: Number(data.defaultRatePerKg), quantityUnit: data.quantityUnit, upiId: data.upiId || '' });
+          } catch (error) {
+            alert(error.response?.data?.message || 'Setup save nahi hua. Settings se dobara try karein.');
+            setShowOnboarding(true);
+          }
         }}
       />
 
