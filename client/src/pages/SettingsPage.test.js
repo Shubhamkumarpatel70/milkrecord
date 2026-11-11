@@ -25,7 +25,7 @@ describe('SettingsPage', () => {
       quantityUnit: 'liter',
       upiId: 'test@upi'
     }));
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
