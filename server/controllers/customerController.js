@@ -5,11 +5,11 @@ exports.createCustomer = async (req, res) => {
   try {
     const { name, whatsapp } = req.body;
     const normalizedName = String(name || '').trim();
-    const normalizedWhatsApp = String(whatsapp || '').replace(/\\D/g, '');
+    const normalizedWhatsApp = String(whatsapp || '').replace(/[^0-9]/g, '');
     if (!normalizedName) {
       return res.status(400).json({ message: 'Customer name is required.' });
     }
-    if (normalizedWhatsApp && !/^[6-9]\\d{9}$/.test(normalizedWhatsApp)) {
+    if (normalizedWhatsApp && !/^[6-9][0-9]{9}$/.test(normalizedWhatsApp)) {
       return res.status(400).json({ message: 'Enter a valid 10-digit Indian WhatsApp number.' });
     }
     const ownerId = req.authUser._id;
