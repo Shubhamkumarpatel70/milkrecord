@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 export default function AuthScreen({ onAuthenticated }) {
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState(() => new URLSearchParams(window.location.search).get('portal') === 'customer' ? 'customer' : 'login');
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [mpin, setMpin] = useState('');
