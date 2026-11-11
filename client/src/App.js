@@ -807,7 +807,9 @@ export function MainAppContent() {
           } catch (error) {
             alert(error.response?.data?.message || 'Setup save nahi hua. Settings se dobara try karein.');
             setShowOnboarding(true);
+            return false;
           }
+          return true;
         }}
       />
 
