@@ -117,12 +117,12 @@ export default function DashboardPage({
     const hasLiter = liter > 0;
     const customersInMonth = Array.from(groups.values()).map(customer => ({
       ...customer,
-      quantity: hasKg && hasLiter ? customer.kg + customer.liter : (hasLiter ? customer.liter : customer.kg),
-      unitLabel: hasKg && hasLiter ? 'kg / L' : (hasLiter ? 'L' : 'kg')
+      quantity: hasKg && hasLiter ? `${customer.kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg + ${customer.liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L` : (hasLiter ? customer.liter : customer.kg),
+      unitLabel: hasKg && hasLiter ? '' : (hasLiter ? 'L' : 'kg')
     })).sort((a, b) => b.earnings - a.earnings);
     return {
-      totalQuantity: hasKg && hasLiter ? kg + liter : (hasLiter ? liter : kg),
-      unitLabel: hasKg && hasLiter ? 'kg / L' : (hasLiter ? 'L' : 'kg'),
+      totalQuantity: hasKg && hasLiter ? `${kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg + ${liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L` : (hasLiter ? liter : kg),
+      unitLabel: hasKg && hasLiter ? '' : (hasLiter ? 'L' : 'kg'),
       totalEarnings: monthRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0),
       recordCount: monthRecords.length,
       customerCount: groups.size,
