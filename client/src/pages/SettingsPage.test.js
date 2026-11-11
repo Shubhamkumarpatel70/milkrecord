@@ -33,7 +33,7 @@ describe('SettingsPage', () => {
   test('validates the shop name before saving', async () => {
     const onSaveConfiguration = jest.fn();
     render(<SettingsPage onSaveConfiguration={onSaveConfiguration} />);
-    fireEvent.change(screen.getByLabelText('Shop / Brand Name'), { target: { value: 'A' } });
+    fireEvent.change(screen.getByPlaceholderText('e.g. Shree Krishna Dairy'), { target: { value: 'A' } });
     fireEvent.submit(screen.getByRole('button', { name: 'Save All Configuration' }).closest('form'));
     await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('2 characters'));
     expect(onSaveConfiguration).not.toHaveBeenCalled();
