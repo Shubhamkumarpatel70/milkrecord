@@ -328,6 +328,10 @@ export function MainAppContent() {
     return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); }} />;
   }
 
+  if (userRole === 'admin') {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
+
   if (userRole === 'customer') {
     return <CustomerPortal onLogout={handleLogout} customerName={user?.name} />;
   }
