@@ -198,7 +198,7 @@ exports.getCustomerRecords = async (req, res) => {
         totalAmount,
         totalPaid,
         remainingAmount: totalAmount - totalPaid,
-        totalDays: records.length
+        totalDays: new Set(records.map(record => record.createdAt.toISOString().slice(0, 10))).size
       }
     });
   } catch (err) {
