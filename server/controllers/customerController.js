@@ -121,8 +121,8 @@ exports.getCustomerRecords = async (req, res) => {
     const end = new Date(start.getFullYear(), start.getMonth() + 1, 0);
     
     const records = await MilkRecord.find({
-      customer: customer.name,
       user: customer.user,
+      $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
       createdAt: { $gte: start, $lte: end }
     }).sort({ createdAt: 1 });
     

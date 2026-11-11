@@ -381,65 +381,59 @@ exports.updateMilkRecordStatus = async (req, res) => {
 // Customer payment functionality
 exports.customerPayment = async (req, res) => {
   try {
-    const { customerId, amount, month, userId } = req.body;
-    
-    if (!customerId || !Number.isFinite(Number(amount)) || Number(amount) <= 0 || !/^\\d{4}-\\d{2}$/.test(String(month)) || !userId) {
-      return res.status(400).json({ message: 'Customer ID, amount, and month are required.' });
+    const { customerId, amount, month } = req.body;
+    const userId = String(req.authUser._id);
+    const paymentAmount = Math.round(Number(amount) * 100) / 100;
+
+    if (!customerId || !Number.isFinite(paymentAmount) || paymentAmount <= 0 || !/^[0-9]{4}-[0-9]{2}$/.test(String(month || ''))) {
+      return res.status(400).json({ message: 'Enter a valid customer, payment amount, and month (YYYY-MM).' });
     }
-    
-    // Find the customer
+
     const customer = await Customer.findOne({ _id: customerId, user: userId });
-    if (!customer) {
-      return res.status(404).json({ message: 'Customer not found.' });
-    }
-    
-    // Get all records for the customer in the specified month
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+
     const start = moment(month + '-01');
-    const end = start.clone().endOf('month');
-    
+    if (!start.isValid() || start.format('YYYY-MM') !== month) {
+      return res.status(400).json({ message: 'Invalid payment month.' });
+    }
+    const end = start.clone().add(1, 'month');
+
     const records = await MilkRecord.find({
       user: userId,
       $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }],
-      createdAt: { $gte: start.toDate(), $lte: end.toDate() }
+      createdAt: { $gte: start.toDate(), $lt: end.toDate() }
     }).sort({ createdAt: 1, _id: 1 });
-    
-    if (records.length === 0) {
-      return res.status(404).json({ message: 'No records found for this month.' });
-    }
-    
-    // Calculate total amount and paid amount
-    const totalAmount = records.reduce((sum, record) => sum + record.amount, 0);
-    const totalPaid = records.reduce((sum, record) => sum + (record.paidAmount || 0), 0);
-    const remainingAmount = totalAmount - totalPaid;
-    
+
+    if (!records.length) return res.status(404).json({ message: 'No records found for this month.' });
+
+    const totalAmount = records.reduce((sum, record) => sum + Number(record.amount || 0), 0);
+    const totalPaid = records.reduce((sum, record) => sum + Number(record.paidAmount || 0), 0);
+    const remainingAmount = Math.max(0, Math.round((totalAmount - totalPaid) * 100) / 100);
     if (paymentAmount > remainingAmount) {
-      return res.status(400).json({ message: 'Payment amount exceeds remaining balance.' });
+      return res.status(400).json({ message: 'Payment amount exceeds remaining balance.', remainingAmount });
     }
-    
-    // Distribute payment across records (prioritize older records)
+
     let remainingPayment = paymentAmount;
     for (const record of records) {
       if (remainingPayment <= 0) break;
-      
-      const recordRemaining = record.amount - (record.paidAmount || 0);
-      if (recordRemaining > 0) {
-        const paymentForThisRecord = Math.min(remainingPayment, recordRemaining);
-        record.paidAmount = (record.paidAmount || 0) + paymentForThisRecord;
-        record.status = record.paidAmount >= record.amount ? 'paid' : 'unpaid';
-        await record.save();
-        remainingPayment -= paymentForThisRecord;
-      }
+      const recordRemaining = Math.max(0, Math.round((Number(record.amount || 0) - Number(record.paidAmount || 0)) * 100) / 100);
+      if (recordRemaining <= 0) continue;
+      const applied = Math.min(remainingPayment, recordRemaining);
+      record.paidAmount = Math.round((Number(record.paidAmount || 0) + applied) * 100) / 100;
+      record.status = record.paidAmount >= Number(record.amount || 0) ? 'paid' : 'unpaid';
+      await record.save();
+      remainingPayment = Math.round((remainingPayment - applied) * 100) / 100;
     }
-    
-    res.json({
+
+    const newRemaining = Math.max(0, Math.round((remainingAmount - paymentAmount) * 100) / 100);
+    return res.json({
       success: true,
-      message: `Payment of ₹${paymentAmount} processed successfully.`,
-      totalPaid: totalPaid + paymentAmount,
-      remainingAmount: remainingAmount - paymentAmount
+      message: `Payment of ₹${paymentAmount.toFixed(2)} recorded successfully.`,
+      totalPaid: Math.round((totalPaid + paymentAmount) * 100) / 100,
+      remainingAmount: newRemaining
     });
-    
   } catch (err) {
     console.error('Customer payment error:', err);
-    res.status(500).json({ message: 'Server error.' });
+    return res.status(500).json({ message: 'Unable to process payment. Please try again.' });
   }
-}; 
+};
