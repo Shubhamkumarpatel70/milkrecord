@@ -5,6 +5,7 @@ const milkRecordSchema = new mongoose.Schema({
   customerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', index: true },
   quantityKg: { type: Number, required: true },       // Stored numeric quantity; display unit is stored separately
   quantityUnit: { type: String, enum: ['kg', 'liter'], default: 'kg' },
+  ratePerUnit: { type: Number, min: 0, default: 50 },
   amount: { type: Number, required: true },
   whatsapp: { type: String, trim: true },
   shift: { type: String, enum: ['morning', 'evening'], default: 'morning' },
