@@ -374,6 +374,7 @@ export default function CustomerManagementPage({
                 <div className="py-10 text-center text-sm text-slate-500">
                   No transaction history found yet.
                   <p className="text-xs mt-1">New payments will appear here with date and optional remark.</p>
+                  <p className="text-[11px] mt-3 text-amber-600 dark:text-amber-400">Payments recorded before this transaction-history feature cannot be shown as separate dated entries.</p>
                 </div>
               ) : (
                 [...transactionCustomer.paymentTransactions]
