@@ -48,6 +48,7 @@ export function MainAppContent() {
   const [showAddCustomerModal, setShowAddCustomerModal] = useState(false);
   const [showPaymentQRModal, setShowPaymentQRModal] = useState(false);
   const [showPaymentSettleModal, setShowPaymentSettleModal] = useState(null);
+  const [settlementAmount, setSettlementAmount] = useState('');
 
   // Data States
   const [loading, setLoading] = useState(true);
@@ -394,7 +395,11 @@ export function MainAppContent() {
                 const url = phone ? `https://wa.me/91${phone}?text=${text}` : `https://wa.me/?text=${text}`;
                 window.open(url, '_blank');
               }}
-              onMarkPayment={(cust) => setShowPaymentSettleModal(cust)}
+              onMarkPayment={(cust) => {
+                const due = Math.max(0, Number(cust.totalAmount || 0) - Number(cust.paidAmount || 0));
+                setSettlementAmount(due.toFixed(2));
+                setShowPaymentSettleModal(cust);
+              }}
               onDeleteCustomer={handleDeleteCustomer}
               isAuthenticated={isAuthenticated}
             />
@@ -653,10 +658,15 @@ export function MainAppContent() {
                 onClick={async () => {
                   if (isAuthenticated && showPaymentSettleModal._id) {
                     try {
+                      const amountToRecord = Number(settlementAmount);
                       const remaining = Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0));
+                      if (!Number.isFinite(amountToRecord) || amountToRecord <= 0 || amountToRecord > remaining) {
+                        alert('Enter a valid amount within the remaining balance.');
+                        return;
+                      }
                       await axios.post('/api/milk-records/payment', {
                         customerId: showPaymentSettleModal._id,
-                        amount: remaining,
+                        amount: amountToRecord,
                         month: showPaymentSettleModal.month
                       });
                     } catch (err) {}
@@ -666,8 +676,9 @@ export function MainAppContent() {
                   alert(`Payment marked as settled for ${showPaymentSettleModal.name}!`);
                 }}
                 className="btn-primary text-xs py-2 px-5"
+                disabled={!settlementAmount || Number(settlementAmount) <= 0 || Number(settlementAmount) > Math.max(0, Number(showPaymentSettleModal.totalAmount || 0) - Number(showPaymentSettleModal.paidAmount || 0))}
               >
-                Confirm Full Payment
+                Record Payment
               </button>
             </div>
           </div>

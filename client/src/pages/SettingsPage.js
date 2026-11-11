@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Settings, Moon, Sun, Globe, Printer, Database, User, Shield, ExternalLink, Save, CheckCircle2, QrCode } from 'lucide-react';
 import { useSettings } from '../contexts/SettingsContext';
 
@@ -15,6 +15,10 @@ export default function SettingsPage({
   const [currentUpiId, setCurrentUpiId] = useState(upiId);
   const [paperSize, setPaperSize] = useState('58mm'); // '58mm' | '80mm' | 'A4'
   const [savedMsg, setSavedMsg] = useState('');
+
+  useEffect(() => {
+    setCurrentUpiId(upiId);
+  }, [upiId]);
 
   const handleDownloadBackup = () => {
     const backup = { app: 'Milk Record', exportedAt: new Date().toISOString(), customers, milkRecords: records };
