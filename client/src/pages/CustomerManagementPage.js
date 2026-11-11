@@ -150,8 +150,8 @@ export default function CustomerManagementPage({
               return total;
             }, { kg: 0, liter: 0 });
             const quantityLabel = [
-              milkQuantity.kg > 0 ? `${milkQuantity.kg.toFixed(2).replace(/\\.00$/, '')} Kg` : '',
-              milkQuantity.liter > 0 ? `${milkQuantity.liter.toFixed(2).replace(/\\.00$/, '')} L` : ''
+              milkQuantity.kg > 0 ? `${Number(milkQuantity.kg.toFixed(2))} Kg` : '',
+              milkQuantity.liter > 0 ? `${Number(milkQuantity.liter.toFixed(2))} L` : ''
             ].filter(Boolean).join(' + ') || '0 Kg';
 
             return (
