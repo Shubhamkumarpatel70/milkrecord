@@ -72,6 +72,7 @@ export function MainAppContent() {
   const [customers, setCustomers] = useState([]);
   const [records, setRecords] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState(indiaMonthKey());
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   // Forms
   const [recordForm, setRecordForm] = useState({
@@ -420,8 +421,8 @@ export function MainAppContent() {
               customers={customers}
               records={records}
               onAddCustomer={() => setShowAddCustomerModal(true)}
-              onViewCustomer={(u, m, n) => {
-                setSelectedMonth(m || selectedMonth);
+              onViewCustomer={(customer) => {
+                setSelectedCustomer(customer);
                 setCurrentView('records');
               }}
               onShareCustomer={(u, n, whatsapp) => {
@@ -447,6 +448,8 @@ export function MainAppContent() {
           {currentView === 'records' && (
             <MilkRecordsPage
               records={records}
+              selectedCustomer={selectedCustomer}
+              onClearCustomerView={() => setSelectedCustomer(null)}
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
