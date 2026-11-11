@@ -476,6 +476,7 @@ export function MainAppContent() {
               totalRevenue={totalRevenue}
               totalCustomers={totalCustomers}
               customers={customers}
+              records={records}
             />
           )}
 
