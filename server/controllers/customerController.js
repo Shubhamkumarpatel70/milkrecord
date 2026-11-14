@@ -1,5 +1,6 @@
 const Customer = require('../models/Customer');
-const MilkRecord = require('../models/MilkRecord'); // Added this import for getCustomerRecords
+const MilkRecord = require('../models/MilkRecord');
+const moment = require('moment');
 
 exports.createCustomer = async (req, res) => {
   try {
