@@ -11,7 +11,8 @@ import {
   CreditCard,
   ReceiptText,
   X,
-  Trash2
+  Trash2,
+  Pencil
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
 
@@ -23,12 +24,42 @@ export default function CustomerManagementPage({
   onShareCustomer,
   onMarkPayment,
   onDeleteCustomer,
+  onEditCustomer,
   isAuthenticated
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'paid' | 'unpaid'
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
   const [transactionCustomer, setTransactionCustomer] = useState(null);
+  const [editingCustomer, setEditingCustomer] = useState(null);
+  const [editForm, setEditForm] = useState({ name: '', whatsapp: '' });
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+
+  const openEditCustomer = customer => {
+    setEditingCustomer(customer);
+    setEditForm({ name: customer.name || '', whatsapp: customer.whatsapp || '' });
+    setEditError('');
+  };
+
+  const submitCustomerEdit = async event => {
+    event.preventDefault();
+    const name = editForm.name.trim();
+    const whatsapp = editForm.whatsapp.replace(/\\D/g, '');
+    if (!name) return setEditError('Customer name is required.');
+    if (!/^[6-9][0-9]{9}$/.test(whatsapp)) return setEditError('Enter a valid 10-digit Indian mobile number.');
+    if (!onEditCustomer || !editingCustomer?._id) return setEditError('Customer update is unavailable. Please refresh and try again.');
+    setEditSaving(true);
+    setEditError('');
+    try {
+      await onEditCustomer(editingCustomer._id, { name, whatsapp });
+      setEditingCustomer(null);
+    } catch (error) {
+      setEditError(error.response?.data?.message || error.message || 'Customer could not be updated.');
+    } finally {
+      setEditSaving(false);
+    }
+  };
 
   const formatDate = value => {
     if (!value) return '—';
@@ -218,6 +249,17 @@ export default function CustomerManagementPage({
 
                 {/* Card Actions */}
                 <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/60">
+                  {onEditCustomer && (
+                    <button
+                      type="button"
+                      onClick={() => openEditCustomer(cust)}
+                      className="p-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
+                      title="Edit customer details"
+                      aria-label={`Edit ${cust.name}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                  )}
                   <button
                     onClick={() => onViewCustomer && onViewCustomer(cust)}
                     className="flex-1 py-2 px-2.5 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 hover:bg-sky-100 font-bold text-xs flex items-center justify-center gap-1 transition-colors min-h-[38px]"
@@ -312,6 +354,15 @@ export default function CustomerManagementPage({
                         </span>
                       </td>
                       <td className="p-3 sm:p-4 text-right space-x-1.5">
+                        {onEditCustomer && (
+                          <button
+                            type="button"
+                            onClick={() => openEditCustomer(c)}
+                            className="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold"
+                          >
+                            Edit
+                          </button>
+                        )}
                         <button
                           onClick={() => onViewCustomer && onViewCustomer(c)}
                           className="px-2.5 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold"
@@ -346,6 +397,42 @@ export default function CustomerManagementPage({
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {editingCustomer && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !editSaving) setEditingCustomer(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="edit-customer-title" className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
+            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Customer details</p>
+                  <h2 id="edit-customer-title" className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">Edit Customer</h2>
+                  <p className="mt-1 text-xs text-slate-500">Update the customer's name and mobile number.</p>
+                </div>
+                <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-50" aria-label="Close edit form"><X className="w-5 h-5" /></button>
+              </div>
+            </div>
+            <form onSubmit={submitCustomerEdit} className="p-5 sm:p-6 space-y-4">
+              <div>
+                <label htmlFor="edit-customer-name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Customer name</label>
+                <input id="edit-customer-name" autoFocus required maxLength={100} value={editForm.name} onChange={event => setEditForm(current => ({ ...current, name: event.target.value }))} className="w-full min-h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="Enter customer name" />
+              </div>
+              <div>
+                <label htmlFor="edit-customer-mobile" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Mobile / WhatsApp number</label>
+                <div className="flex">
+                  <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 text-sm font-semibold text-slate-500">+91</span>
+                  <input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\\s()-]/g, '') }))} className="min-w-0 flex-1 min-h-11 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="10-digit mobile number" />
+                </div>
+                <p className="mt-1 text-[11px] text-slate-400">Use a valid 10-digit Indian mobile number.</p>
+              </div>
+              {editError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-700">{editError}</div>}
+              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+                <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="min-h-11 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-sm font-bold text-slate-600 dark:text-slate-300 disabled:opacity-50">Cancel</button>
+                <button type="submit" disabled={editSaving} className="min-h-11 rounded-xl bg-sky-600 hover:bg-sky-700 px-5 text-sm font-bold text-white shadow-md disabled:opacity-60">{editSaving ? 'Saving…' : 'Save Changes'}</button>
+              </div>
+            </form>
+          </section>
         </div>
       )}
 
