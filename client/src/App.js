@@ -292,6 +292,18 @@ export function MainAppContent() {
     }
   };
 
+  const handleEditCustomer = async (customerId, updates) => {
+    if (!customerId) throw new Error('Customer not found. Please refresh and try again.');
+    const response = await axios.put(`/api/customers/${customerId}`, updates);
+    const updatedCustomer = response.data?.customer;
+    if (!updatedCustomer) throw new Error('The server did not return the updated customer.');
+    setCustomers(previous => previous.map(customer => (
+      customer._id === customerId ? { ...customer, ...updatedCustomer } : customer
+    )));
+    if (selectedCustomer?._id === customerId) setSelectedCustomer(previous => ({ ...previous, ...updatedCustomer }));
+    return updatedCustomer;
+  };
+
   // Generate Payment QR Code
   const handleGenerateQR = async () => {
     try {
@@ -443,6 +455,7 @@ export function MainAppContent() {
                 setShowPaymentSettleModal(cust);
               }}
               onDeleteCustomer={handleDeleteCustomer}
+              onEditCustomer={handleEditCustomer}
               isAuthenticated={isAuthenticated}
             />
           )}
