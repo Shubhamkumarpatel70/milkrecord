@@ -11,11 +11,24 @@ const createAuthRateLimiter = ({ windowMs, max, scope, message }) => async (req,
     const key = crypto.createHash('sha256').update(`${scope}:${ipHash}:${windowStart}`).digest('hex');
     const expiresAt = new Date((windowStart + 1) * windowMs);
 
-    const bucket = await AuthRateLimit.findOneAndUpdate(
-      { key },
-      { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    let bucket;
+    try {
+      bucket = await AuthRateLimit.findOneAndUpdate(
+        { key },
+        { $inc: { count: 1 }, $setOnInsert: { expiresAt } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (error) {
+      // Two first requests can race to create the same unique bucket.
+      // Recover the duplicate-key race by incrementing the already-created bucket.
+      if (error.code !== 11000) throw error;
+      bucket = await AuthRateLimit.findOneAndUpdate(
+        { key },
+        { $inc: { count: 1 } },
+        { new: true }
+      );
+      if (!bucket) throw error;
+    }
 
     const remaining = Math.max(0, max - bucket.count);
     res.set('RateLimit-Limit', String(max));
