@@ -38,14 +38,14 @@ export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveC
     <div className="mx-auto w-full max-w-4xl space-y-5 pb-10 animate-fade-in">
       <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-sky-50 p-3 text-sky-700"><Settings className="h-6 w-6"/></div>
-          <div><p className="text-xs font-bold uppercase tracking-widest text-sky-700">Workspace preferences</p><h1 className="text-2xl font-bold text-slate-900">Dairy Settings</h1><p className="mt-1 text-sm text-slate-500">Manage your business name, milk rate, and quantity unit.</p></div>
+          <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-700"><Settings className="h-6 w-6"/></div>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-700">Workspace preferences</p><h1 className="text-2xl font-bold text-slate-900">Dairy Settings</h1><p className="mt-1 text-sm text-slate-500">Manage your business name, milk rate, and quantity unit.</p></div>
         </div>
       </header>
 
       <form onSubmit={handleSave} className="space-y-5">
         <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-center gap-2"><Store className="h-5 w-5 text-sky-600"/><h2 className="font-bold text-slate-900">Business profile</h2></div>
+          <div className="flex items-center gap-2"><Store className="h-5 w-5 text-emerald-600"/><h2 className="font-bold text-slate-900">Business profile</h2></div>
           <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Shop / Brand Name</label><input required minLength="2" maxLength="100" value={shopName} onChange={e=>setShopName(e.target.value)} placeholder="e.g. Shree Krishna Dairy" className="input-field min-h-12"/></div>
         </section>
 
@@ -54,7 +54,7 @@ export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveC
           <p className="text-sm text-slate-500">This default rate applies only to your dairy account. Each supplier can set a different rate and unit.</p>
           <div className="grid gap-4 sm:grid-cols-2">
             <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Default Milk Rate (₹ / {quantityUnit === 'kg' ? 'Kg' : 'Liter'})</label><div className="relative"><span className="absolute left-3 top-3 text-slate-500">₹</span><input type="number" min="0" max="100000" step="0.01" required value={milkRate} onChange={e=>setMilkRate(e.target.value)} className="input-field min-h-12 pl-8" placeholder="50.00"/></div></div>
-            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Quantity Type</label><div className="grid grid-cols-2 gap-2">{[{value:'kg',label:'Kilogram (Kg)'},{value:'liter',label:'Liter (L)' }].map(option=><button key={option.value} type="button" onClick={()=>setQuantityUnit(option.value)} className={'min-h-12 rounded-xl border px-3 text-sm font-semibold '+(quantityUnit===option.value?'border-sky-500 bg-sky-50 text-sky-700':'border-slate-200 bg-white text-slate-600')}>{option.label}</button>)}</div></div>
+            <div><label className="mb-1.5 block text-sm font-semibold text-slate-700">Quantity Type</label><div className="grid grid-cols-2 gap-2">{[{value:'kg',label:'Kilogram (Kg)'},{value:'liter',label:'Liter (L)' }].map(option=><button key={option.value} type="button" onClick={()=>setQuantityUnit(option.value)} className={'min-h-12 rounded-xl border px-3 text-sm font-semibold '+(quantityUnit===option.value?'border-emerald-500 bg-emerald-50 text-emerald-700':'border-slate-200 bg-white text-slate-600')}>{option.label}</button>)}</div></div>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4"><p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">Example calculation</p><p className="mt-1 text-lg font-bold text-emerald-900">2 {quantityUnit === 'kg' ? 'Kg' : 'Liter'} × ₹{(Number(milkRate)||0).toFixed(2)} = ₹{((Number(milkRate)||0)*2).toFixed(2)}</p></div>
         </section>
@@ -65,10 +65,10 @@ export default function SettingsPage({ businessProfile = {}, upiId = '', onSaveC
         </section>
 
         <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-center gap-2"><CircleHelp className="h-5 w-5 text-indigo-600"/><h2 className="font-bold text-slate-900">Need help?</h2></div>
+          <div className="flex items-center gap-2"><CircleHelp className="h-5 w-5 text-teal-600"/><h2 className="font-bold text-slate-900">Need help?</h2></div>
           <p className="mt-2 text-sm text-slate-500">Need help using Milk Record? Start the product tour or contact ASKC Technologies support.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <a href="https://askctechnologies.in" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:border-sky-300 hover:bg-sky-50"><BookOpen className="h-5 w-5 text-sky-600"/><span><strong className="block text-sm text-slate-800">Help & product info</strong><small className="text-xs text-slate-500">Guides and product updates</small></span><ExternalLink className="ml-auto h-4 w-4 text-slate-400"/></a>
+            <a href="https://askctechnologies.in" target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 rounded-2xl border border-slate-200 p-3 hover:border-emerald-300 hover:bg-emerald-50"><BookOpen className="h-5 w-5 text-emerald-600"/><span><strong className="block text-sm text-slate-800">Help & product info</strong><small className="text-xs text-slate-500">Guides and product updates</small></span><ExternalLink className="ml-auto h-4 w-4 text-slate-400"/></a>
             <button type="button" onClick={onStartTour} className="flex w-full items-center gap-3 rounded-2xl border border-slate-200 p-3 text-left hover:border-emerald-300 hover:bg-emerald-50"><MessageCircle className="h-5 w-5 text-emerald-600"/><span><strong className="block text-sm text-slate-800">Start guided product tour</strong><small className="text-xs text-slate-500">Step-by-step walkthrough of the app</small></span></button>
           </div>
           <p className="mt-3 flex items-start gap-2 text-xs text-slate-400"><ShieldCheck className="h-4 w-4 shrink-0"/>Your business configuration is saved to your signed-in dairy account.</p>
