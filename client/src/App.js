@@ -510,6 +510,7 @@ export function MainAppContent() {
               }}
               onDeleteCustomer={handleDeleteCustomer}
               onEditCustomer={handleEditCustomer}
+              onDeletePaymentTransaction={handleDeletePaymentTransaction}
               isAuthenticated={isAuthenticated}
             />
           )}
