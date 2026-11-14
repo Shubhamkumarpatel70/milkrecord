@@ -124,9 +124,30 @@ exports.getBusinessProfile = async (req, res) => {
   try {
     const user = await User.findById(req.authUser._id).select('name businessProfile paymentOptions');
     if (!user) return res.status(404).json({ message: 'User not found.' });
+    const businessProfile = user.businessProfile?.toObject
+      ? user.businessProfile.toObject()
+      : { ...(user.businessProfile || {}) };
+    const savedShopName = typeof businessProfile.shopName === 'string'
+      ? businessProfile.shopName.trim()
+      : '';
+
+    // Backward compatibility: older accounts can have a persisted shopName
+    // while isConfigured is false/missing from the legacy schema state.
+    // Promote those accounts so the first-time wizard is not shown again.
+    if (savedShopName.length >= 2 && businessProfile.isConfigured !== true) {
+      user.businessProfile.isConfigured = true;
+      await user.save();
+      businessProfile.isConfigured = true;
+    }
+
     return res.json({
       name: user.name,
-      businessProfile: user.businessProfile || { shopName: '', milkRate: 50, quantityUnit: 'kg', isConfigured: false },
+      businessProfile: {
+        shopName: savedShopName,
+        milkRate: Number(businessProfile.milkRate ?? 50),
+        quantityUnit: businessProfile.quantityUnit || 'kg',
+        isConfigured: Boolean(businessProfile.isConfigured)
+      },
       paymentOptions: user.paymentOptions || {}
     });
   } catch (err) {
