@@ -235,12 +235,13 @@ exports.deletePaymentTransaction = async (req, res) => {
     const transaction = customer.paymentTransactions.id(req.params.transactionId);
     if (!transaction) return res.status(404).json({ message: 'Payment transaction not found.' });
 
-    // Older ledger entries do not have a billing month. Fall back to the payment date,
-    // but only reverse if that month's recorded paid balance can cover the full amount.
-    const billingMonth = transaction.billingMonth ||
-      moment(transaction.paymentDate).utcOffset(330).format('YYYY-MM');
+    // Older ledger entries did not store the billing period. Do not guess from
+    // paymentDate: a payment may have been entered later for a previous month's bill.
+    const billingMonth = transaction.billingMonth;
     if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(String(billingMonth || ''))) {
-      return res.status(409).json({ message: 'This payment has no valid billing period and cannot be safely reversed.' });
+      return res.status(409).json({
+        message: 'This is an older payment entry without a saved billing month. It cannot be safely deleted because the original milk balance period is unknown.'
+      });
     }
 
     const start = moment(billingMonth + '-01');
