@@ -473,6 +473,7 @@ exports.customerPayment = async (req, res) => {
     customer.paymentTransactions.push({
       amount: paymentAmount,
       paymentDate: transactionDate,
+      billingMonth: month,
       remark: cleanRemark
     });
     await customer.save();
