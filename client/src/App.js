@@ -309,6 +309,13 @@ export function MainAppContent() {
     }
   };
 
+  const handleDeletePaymentTransaction = async (customerId, transactionId) => {
+    if (!customerId || !transactionId) throw new Error('Payment transaction could not be identified.');
+    await axios.delete(`/api/customers/${customerId}/payments/${transactionId}`);
+    await refreshData();
+    return true;
+  };
+
   // Customer Submission
   const handleSaveCustomer = async (e) => {
     e.preventDefault();
@@ -541,6 +548,7 @@ export function MainAppContent() {
               upiId={upiId}
               onOpenPaymentQR={() => setShowPaymentQRModal(true)}
               onMarkPayment={(cust) => setShowPaymentSettleModal(cust)}
+              onDeletePaymentTransaction={handleDeletePaymentTransaction}
             />
           )}
 
