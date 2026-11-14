@@ -138,7 +138,7 @@ export default function CustomerManagementPage({
     <div className={compact ? 'flex items-center gap-1.5 flex-wrap' : 'grid grid-cols-2 gap-2'}>
       {onViewCustomer && (
         <button type="button" onClick={() => onViewCustomer(customer)}
-          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-95050 dark:text-emerald-300">
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/50 dark:text-emerald-300">
           <Eye className="h-4 w-4" /> View
         </button>
       )}
