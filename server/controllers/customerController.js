@@ -228,7 +228,7 @@ exports.deleteCustomer = async (req, res) => {
 exports.updateCustomer = async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
-    const whatsapp = String(req.body.whatsapp || '').replace(/\\D/g, '');
+    const whatsapp = String(req.body.whatsapp || '').replace(/\D/g, '');
     if (!name) return res.status(400).json({ message: 'Customer name is required.' });
     if (name.length > 100) return res.status(400).json({ message: 'Customer name must be 100 characters or fewer.' });
     if (!/^[6-9][0-9]{9}$/.test(whatsapp)) {
