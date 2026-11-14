@@ -134,7 +134,7 @@ process.on('unhandledRejection', (reason, promise) => {
 
 // MongoDB Connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/milk-record';
-console.log('Connecting to MongoDB:', mongoUri.replace(/\\/\\/[^:]+:[^@]+@/, '//***:***@'));
+console.log('Connecting to MongoDB:', mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
 
 mongoose.connect(mongoUri)
 .then(() => {
