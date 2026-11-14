@@ -366,15 +366,12 @@ export function MainAppContent() {
 
   if (showWelcome) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800 px-6 text-center text-white">
-        <div className="animate-[welcomeIn_450ms_ease-out_both]">
-          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/20 bg-white/10 text-3xl shadow-2xl backdrop-blur">🥛</div>
-          <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-200">Milk Record</p>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Welcome, {user?.name || 'User'}!</h1>
-          <p className="mt-2 text-sm text-emerald-100/80">Your dairy workspace is ready</p>
-          <div className="mx-auto mt-7 h-1 w-28 overflow-hidden rounded-full bg-white/20"><div className="h-full w-full origin-left animate-[welcomeProgress_1.3s_linear_forwards] rounded-full bg-emerald-300" /></div>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden bg-[#f4fbf6]">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.12),transparent_42%)]" />
+        <div className="relative flex h-28 w-28 items-center justify-center rounded-[2rem] bg-white shadow-[0_24px_80px_rgba(5,150,105,0.18)] ring-1 ring-emerald-100 animate-[logoSplash_650ms_cubic-bezier(.2,.8,.2,1)_both]">
+          <img src="/logo192.png" alt="Milk Record" className="h-20 w-20 rounded-2xl object-contain" />
         </div>
-        <style>{'@keyframes welcomeIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes welcomeProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}'}</style>
+        <style>{'@keyframes logoSplash{from{opacity:0;transform:scale(.72);filter:blur(8px)}to{opacity:1;transform:scale(1);filter:blur(0)}}@media(prefers-reduced-motion:reduce){.animate-\\[logoSplash_650ms_cubic-bezier\\(\\.2\\,\\.8\\,\\.2\\,1\\)_both\\]{animation:none}}'}</style>
       </div>
     );
   }
