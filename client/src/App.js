@@ -42,6 +42,7 @@ export function MainAppContent() {
 
   // Authentication & User State
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [userRole, setUserRole] = useState('user');
   const [user, setUser] = useState(null);
 
@@ -137,6 +138,12 @@ export function MainAppContent() {
     });
     return () => { axios.interceptors.request.eject(interceptor); axios.interceptors.response.eject(responseInterceptor); };
   }, []);
+
+  useEffect(() => {
+    if (!showWelcome) return undefined;
+    const timer = setTimeout(() => setShowWelcome(false), 1300);
+    return () => clearTimeout(timer);
+  }, [showWelcome]);
 
   // Fetch Dashboard Stats & Customer Records
   const refreshData = useCallback(async () => {
@@ -350,7 +357,22 @@ export function MainAppContent() {
   }
 
   if (!isAuthenticated || !localStorage.getItem('authToken')) {
-    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); }} />;
+    return <AuthScreen onAuthenticated={(signedInUser) => { setUser(signedInUser); setUserRole(signedInUser.role); setIsAuthenticated(true); setShowWelcome(true); }} />;
+  }
+
+  if (showWelcome) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-800 px-6 text-center text-white">
+        <div className="animate-[welcomeIn_450ms_ease-out_both]">
+          <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-3xl border border-white/20 bg-white/10 text-3xl shadow-2xl backdrop-blur">🥛</div>
+          <p className="text-xs font-bold uppercase tracking-[0.28em] text-emerald-200">Milk Record</p>
+          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">Welcome, {user?.name || 'User'}!</h1>
+          <p className="mt-2 text-sm text-emerald-100/80">Your dairy workspace is ready</p>
+          <div className="mx-auto mt-7 h-1 w-28 overflow-hidden rounded-full bg-white/20"><div className="h-full w-full origin-left animate-[welcomeProgress_1.3s_linear_forwards] rounded-full bg-emerald-300" /></div>
+        </div>
+        <style>{'@keyframes welcomeIn{from{opacity:0;transform:translateY(12px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}@keyframes welcomeProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}'}</style>
+      </div>
+    );
   }
 
   if (userRole === 'admin') {
