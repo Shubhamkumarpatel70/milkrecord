@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Milk, IndianRupee, AlertCircle, Users, TrendingUp, PlusCircle,
-  QrCode, ArrowUpRight, Activity, CalendarDays, UserPlus
+  Milk, IndianRupee, AlertCircle, Users, TrendingUp,
+  QrCode, ArrowUpRight, UserPlus, Plus, CalendarDays
 } from 'lucide-react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -10,12 +10,6 @@ import {
 const currency = (value) => new Intl.NumberFormat('en-IN', {
   style: 'currency', currency: 'INR', maximumFractionDigits: 0
 }).format(Number(value) || 0);
-
-const localDateKey = (date) => {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return '';
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-};
 
 const indiaMonthKey = (date) => {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -34,32 +28,30 @@ const monthLabel = (key) => {
   }).format(new Date(Date.UTC(year, month - 1, 15, 12)));
 };
 
-function StatCard({ label, value, detail, icon: Icon, tone = 'sky' }) {
+function SummaryCard({ label, value, note, icon: Icon, tone }) {
   const tones = {
-    sky: 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
-    emerald: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    rose: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300',
-    violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300'
+    blue: 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
+    green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
+    purple: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
+    red: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
   };
   return (
-    <section className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400">{label}</p>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 dark:text-white break-words">{value}</p>
-          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
-        </div>
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tones[tone]}`}>
-          <Icon className="h-5 w-5" />
+    <section className="min-w-0 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${tones[tone]}`}>
+          <Icon className="h-4.5 w-4.5" />
         </span>
+        <p className="truncate text-xs font-medium text-slate-500 dark:text-slate-400">{label}</p>
       </div>
+      <p className="mt-3 break-words text-2xl font-bold tracking-tight text-slate-900 dark:text-white">{value}</p>
+      <p className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{note}</p>
     </section>
   );
 }
 
 function EmptyState({ title, detail }) {
   return (
-    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-8 text-center">
+    <div className="rounded-xl border border-dashed border-slate-200 dark:border-slate-700 px-4 py-7 text-center">
       <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">{title}</p>
       <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{detail}</p>
     </div>
@@ -84,8 +76,13 @@ export default function DashboardPage({
   onOpenPaymentQR,
   onNavigate
 }) {
-  const currentIndiaMonth = indiaMonthKey(new Date());
-  const availableSalesMonths = useMemo(() => {
+  const today = new Date();
+  const todayLabel = today.toLocaleDateString('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    timeZone: 'Asia/Kolkata'
+  });
+  const currentIndiaMonth = indiaMonthKey(today);
+  const availableMonths = useMemo(() => {
     const months = new Set([currentIndiaMonth]);
     (Array.isArray(records) ? records : []).forEach(record => {
       const month = indiaMonthKey(record.createdAt);
@@ -93,74 +90,51 @@ export default function DashboardPage({
     });
     return Array.from(months).sort((a, b) => b.localeCompare(a));
   }, [records, currentIndiaMonth]);
-  const [selectedSalesMonth, setSelectedSalesMonth] = useState(currentIndiaMonth);
-  const monthlySales = useMemo(() => {
-    const monthRecords = (Array.isArray(records) ? records : []).filter(record =>
-      indiaMonthKey(record.createdAt) === selectedSalesMonth
-    );
-    const groups = new Map();
-    monthRecords.forEach((record, index) => {
-      const key = record.customerId || record.customer || `unknown-${index}`;
-      const existing = groups.get(key) || {
-        key, name: record.customer || 'Customer',
-        kg: 0, liter: 0, earnings: 0
-      };
-      const quantity = Number(record.quantityKg) || 0;
-      if ((record.quantityUnit || 'kg') === 'liter') existing.liter += quantity;
-      else existing.kg += quantity;
-      existing.earnings += Number(record.amount) || 0;
-      groups.set(key, existing);
-    });
-    const kg = monthRecords.filter(record => (record.quantityUnit || 'kg') !== 'liter').reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
-    const liter = monthRecords.filter(record => record.quantityUnit === 'liter').reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
-    const hasKg = kg > 0;
-    const hasLiter = liter > 0;
-    const customersInMonth = Array.from(groups.values()).map(customer => ({
-      ...customer,
-      quantity: hasKg && hasLiter ? `${customer.kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg + ${customer.liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L` : (hasLiter ? customer.liter : customer.kg),
-      unitLabel: hasKg && hasLiter ? '' : (hasLiter ? 'L' : 'kg')
-    })).sort((a, b) => b.earnings - a.earnings);
-    return {
-      totalQuantity: hasKg && hasLiter ? `${kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg + ${liter.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L` : (hasLiter ? liter : kg),
-      unitLabel: hasKg && hasLiter ? '' : (hasLiter ? 'L' : 'kg'),
-      totalEarnings: monthRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0),
-      recordCount: monthRecords.length,
-      customerCount: groups.size,
-      customers: customersInMonth
-    };
-  }, [records, selectedSalesMonth]);
+  const [selectedMonth, setSelectedMonth] = useState(currentIndiaMonth);
 
-  const recoveryRate = totalRevenue > 0
-    ? Math.min(100, Math.round((totalReceive / totalRevenue) * 100))
-    : 0;
+  const monthSummary = useMemo(() => {
+    const monthRecords = (Array.isArray(records) ? records : []).filter(
+      record => indiaMonthKey(record.createdAt) === selectedMonth
+    );
+    const kg = monthRecords.filter(record => (record.quantityUnit || 'kg') !== 'liter')
+      .reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
+    const liters = monthRecords.filter(record => record.quantityUnit === 'liter')
+      .reduce((sum, record) => sum + (Number(record.quantityKg) || 0), 0);
+    const mixed = kg > 0 && liters > 0;
+    return {
+      quantity: mixed
+        ? `${kg.toLocaleString('en-IN', { maximumFractionDigits: 2 })} kg + ${liters.toLocaleString('en-IN', { maximumFractionDigits: 2 })} L`
+        : `${(liters || kg).toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${liters > 0 ? 'L' : 'kg'}`,
+      earnings: monthRecords.reduce((sum, record) => sum + (Number(record.amount) || 0), 0),
+      entries: monthRecords.length,
+      customers: new Set(monthRecords.map(record => record.customerId || record.customer).filter(Boolean)).size
+    };
+  }, [records, selectedMonth]);
 
   const weeklyData = useMemo(() => {
-    const today = new Date();
     const days = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(today);
       date.setDate(today.getDate() - (6 - index));
+      const key = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).format(date);
       return {
-        key: localDateKey(date),
-        day: date.toLocaleDateString('en-IN', { weekday: 'short' }),
-        dateLabel: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }),
+        key,
+        day: date.toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
+        dateLabel: date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', timeZone: 'Asia/Kolkata' }),
         milk: 0
       };
     });
     const totals = new Map(days.map(day => [day.key, 0]));
-    (Array.isArray(records) ? records : []).filter(record => (record.quantityUnit || 'kg') === quantityUnit).forEach(record => {
-      const key = localDateKey(record.createdAt);
+    (Array.isArray(records) ? records : []).forEach(record => {
+      if ((record.quantityUnit || 'kg') !== quantityUnit) return;
+      const key = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).format(new Date(record.createdAt));
       if (totals.has(key)) totals.set(key, totals.get(key) + (Number(record.quantityKg) || 0));
     });
-    return days.map(day => ({ ...day, milk: Number(totals.get(day.key).toFixed(2)) }));
+    return days.map(day => ({ ...day, milk: Number((totals.get(day.key) || 0).toFixed(2)) }));
   }, [records, quantityUnit]);
-
-  const hasWeeklyData = weeklyData.some(day => day.milk > 0);
-  const topCustomers = useMemo(() => (
-    (Array.isArray(customers) ? customers : [])
-      .slice()
-      .sort((a, b) => (Number(b.totalAmount) || 0) - (Number(a.totalAmount) || 0))
-      .slice(0, 5)
-  ), [customers]);
 
   const recentRecords = useMemo(() => (
     (Array.isArray(records) ? records : [])
@@ -169,242 +143,216 @@ export default function DashboardPage({
       .slice(0, 5)
   ), [records]);
 
-  const actions = [
-    { label: 'Add milk entry', description: 'Record today’s collection', icon: Milk, onClick: onOpenAddRecord, tone: 'sky' },
-    { label: 'Add customer', description: 'Create a customer profile', icon: UserPlus, onClick: onOpenAddCustomer, tone: 'violet' },
-    { label: 'Payment QR', description: 'Generate a UPI payment QR', icon: QrCode, onClick: onOpenPaymentQR, tone: 'emerald' }
+  const recoveryRate = totalRevenue > 0
+    ? Math.min(100, Math.round((totalReceive / totalRevenue) * 100))
+    : 0;
+  const unitLabel = quantityUnit === 'liter' ? 'L' : 'kg';
+  const todayQuantity = quantityUnit === 'liter' ? todaysMilkLiter : todaysMilkKg;
+  const totalQuantity = quantityUnit === 'liter' ? totalMilkQuantityLiter : totalMilkQuantityKg;
+
+  const quickActions = [
+    { label: 'Milk entry', helper: 'Record collection', icon: Plus, action: onOpenAddRecord },
+    { label: 'Add customer', helper: 'Create customer', icon: UserPlus, action: onOpenAddCustomer },
+    { label: 'Payment QR', helper: 'Receive payment', icon: QrCode, action: onOpenPaymentQR }
   ];
 
   return (
-    <div className="mx-auto w-full max-w-7xl space-y-5 sm:space-y-7 pb-8">
-      <section className="relative overflow-hidden rounded-3xl bg-slate-950 px-5 py-6 sm:px-8 sm:py-8 text-white shadow-lg">
-        <div className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full bg-sky-500/20 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 right-1/3 h-48 w-48 rounded-full bg-emerald-400/10 blur-3xl" />
-        <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-semibold text-sky-100">
-              <Activity className="h-3.5 w-3.5" /> DAIRY OVERVIEW
-            </div>
-            <h1 className="mt-3 text-2xl sm:text-3xl font-bold tracking-tight">Your dairy, at a glance.</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-slate-300">
-              Track milk collection, customer balances and payments from one simple dashboard.
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[190px]">
-            <button onClick={onOpenAddRecord} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-slate-950">
-              <PlusCircle className="h-4 w-4" /> Add milk entry
-            </button>
-            <button onClick={onOpenAddCustomer} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/20 bg-white/10 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/15 focus:outline-none focus:ring-2 focus:ring-white">
-              <Users className="h-4 w-4" /> Add customer
-            </button>
-          </div>
+    <div className="mx-auto w-full max-w-7xl space-y-5 pb-8 sm:space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">Dashboard</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
+            Welcome back!
+          </h1>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{todayLabel}</p>
         </div>
+        <button
+          type="button"
+          onClick={onOpenAddRecord}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+        >
+          <Plus className="h-4 w-4" /> Add milk entry
+        </button>
+      </header>
+
+      <section aria-label="Business summary" className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <SummaryCard label="Today's milk" value={`${Number(todayQuantity).toLocaleString('en-IN')} ${unitLabel}`} note="Collection recorded today" icon={Milk} tone="blue" />
+        <SummaryCard label="Customers" value={totalCustomers} note="Registered customers" icon={Users} tone="purple" />
+        <SummaryCard label="Received" value={currency(totalReceive)} note={`${recoveryRate}% of total revenue`} icon={IndianRupee} tone="green" />
+        <SummaryCard label="Pending" value={currency(totalPending)} note="Payment to be collected" icon={AlertCircle} tone="red" />
       </section>
 
-      <section aria-label="Business summary" className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 sm:gap-4">
-        <StatCard label="Today's collection" value={`${Number(quantityUnit === 'liter' ? todaysMilkLiter : todaysMilkKg).toLocaleString('en-IN')} ${quantityUnit === 'liter' ? 'L' : 'kg'}`} detail="Milk recorded today" icon={Milk} tone="sky" />
-        <StatCard label="Total milk recorded" value={`${Number(quantityUnit === 'liter' ? totalMilkQuantityLiter : totalMilkQuantityKg).toLocaleString('en-IN')} ${quantityUnit === 'liter' ? 'L' : 'kg'}`} detail={`${totalRecords} entries recorded`} icon={TrendingUp} tone="emerald" />
-        <StatCard label="Total revenue" value={currency(totalRevenue)} detail={`Received ${currency(totalReceive)}`} icon={IndianRupee} tone="violet" />
-        <StatCard label="Pending payments" value={currency(totalPending)} detail="Amount yet to be collected" icon={AlertCircle} tone="rose" />
-      </section>
-
-      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-5">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-base font-bold text-slate-900 dark:text-white">Monthly milk sales</h2>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Sales and customer-wise milk records for each month</p>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Quick actions</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your common tasks, in one place</p>
           </div>
-          <label className="w-full sm:w-56">
-            <span className="mb-1 block text-xs font-semibold text-slate-600 dark:text-slate-300">Select month</span>
-            <select value={selectedSalesMonth} onChange={event => setSelectedSalesMonth(event.target.value)} className="min-h-11 w-full rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 px-3 text-sm font-semibold text-slate-800 dark:text-white">
-              {availableSalesMonths.map(month => <option key={month} value={month}>{monthLabel(month)}</option>)}
-            </select>
-          </label>
         </div>
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <StatCard label="Milk sold" value={`${monthlySales.totalQuantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} ${monthlySales.unitLabel}`} detail={`${monthlySales.recordCount} milk entries`} icon={Milk} tone="sky" />
-          <StatCard label="Total earnings" value={currency(monthlySales.totalEarnings)} detail="Value of milk sold in this month" icon={IndianRupee} tone="emerald" />
-          <StatCard label="Customers served" value={monthlySales.customerCount} detail="Customers with milk entries" icon={Users} tone="violet" />
-        </div>
-        <div className="mt-5">
-          <h3 className="text-sm font-bold text-slate-900 dark:text-white">Customer-wise milk sales</h3>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">How much milk each customer received in {monthLabel(selectedSalesMonth)}</p>
-          {monthlySales.customers.length ? (
-            <div className="mt-3 overflow-x-auto">
-              <table className="w-full min-w-[480px] text-left text-sm">
-                <thead><tr className="border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400"><th className="py-3 pr-3">Customer</th><th className="py-3 pr-3 text-right">Milk quantity</th><th className="py-3 text-right">Earnings</th></tr></thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {monthlySales.customers.map(customer => <tr key={customer.key}><td className="py-3 pr-3 font-semibold text-slate-800 dark:text-slate-100">{customer.name}</td><td className="py-3 pr-3 text-right tabular-nums">{customer.quantity.toLocaleString('en-IN', { maximumFractionDigits: 2 })} {customer.unitLabel}</td><td className="py-3 text-right font-semibold tabular-nums">{currency(customer.earnings)}</td></tr>)}
-                </tbody>
-              </table>
-            </div>
-          ) : <div className="mt-3"><EmptyState title="No milk sales for this month" detail="Choose another month or add milk entries to see the sales report." /></div>}
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          {quickActions.map(({ label, helper, icon: Icon, action }) => (
+            <button
+              key={label}
+              type="button"
+              onClick={action}
+              className="flex min-h-[94px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-center transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-sky-800 dark:hover:bg-slate-700"
+            >
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-sky-700 shadow-sm dark:bg-slate-800 dark:text-sky-300">
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 sm:text-sm">{label}</span>
+              <span className="hidden text-[11px] text-slate-500 dark:text-slate-400 sm:block">{helper}</span>
+            </button>
+          ))}
         </div>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm lg:col-span-2">
-          <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <section className="grid grid-cols-1 gap-4 lg:grid-cols-5">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-5 lg:col-span-3">
+          <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Milk collection trend</h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Actual entries from the last seven days</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Milk collection</h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Last 7 days · {unitLabel}</p>
             </div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 dark:bg-sky-950/50 px-3 py-1.5 text-xs font-semibold text-sky-700 dark:text-sky-300">
-              <CalendarDays className="h-3.5 w-3.5" /> Last 7 days
-            </span>
+            <CalendarDays className="h-5 w-5 text-slate-400" />
           </div>
-          {hasWeeklyData ? (
-            <div className="h-64 w-full">
+          {weeklyData.some(day => day.milk > 0) ? (
+            <div className="h-52 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={weeklyData} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+                <AreaChart data={weeklyData} margin={{ top: 8, right: 8, left: -22, bottom: 0 }}>
                   <defs>
-                    <linearGradient id="milkCollectionFill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.28} />
+                    <linearGradient id="dashboardMilkFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0ea5e9" stopOpacity={0.25} />
                       <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0.02} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 5" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 11 }} />
+                  <YAxis tickLine={false} axisLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
                   <Tooltip
                     labelFormatter={(label, payload) => payload?.[0]?.payload?.dateLabel || label}
-                    formatter={(value) => [`${value} ${quantityUnit === 'liter' ? 'L' : 'kg'}`, 'Collection']}
+                    formatter={value => [`${value} ${unitLabel}`, 'Milk']}
                     contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: 12, color: '#fff', fontSize: 12 }}
                   />
-                  <Area type="monotone" dataKey="milk" stroke="#0284c7" strokeWidth={2.5} fill="url(#milkCollectionFill)" activeDot={{ r: 5 }} />
+                  <Area type="monotone" dataKey="milk" stroke="#0284c7" strokeWidth={2.5} fill="url(#dashboardMilkFill)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <EmptyState title="No collection data for this week" detail="Milk entries will appear here as soon as you add them." />
+            <EmptyState title="No collection this week" detail="Your milk entries will appear here once recorded." />
           )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Payment overview</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Collection against recorded revenue</p>
-          <div className="mt-6">
-            <div className="flex items-end justify-between gap-3">
-              <span className="text-3xl font-bold text-slate-900 dark:text-white">{recoveryRate}%</span>
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Received</span>
-            </div>
-            <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-              <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${recoveryRate}%` }} />
-            </div>
-            <div className="mt-4 space-y-3 text-sm">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500 dark:text-slate-400">Received</span>
-                <strong className="text-emerald-600 dark:text-emerald-400">{currency(totalReceive)}</strong>
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-slate-500 dark:text-slate-400">Pending</span>
-                <strong className="text-rose-600 dark:text-rose-400">{currency(totalPending)}</strong>
-              </div>
-            </div>
-            <button onClick={() => onNavigate && onNavigate('payments')} className="mt-6 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 dark:border-slate-600 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 transition hover:border-sky-400 hover:text-sky-700 dark:hover:text-sky-300">
-              View payments <ArrowUpRight className="h-4 w-4" />
-            </button>
+          <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-sm dark:border-slate-700">
+            <span className="text-slate-500 dark:text-slate-400">Total milk recorded</span>
+            <strong className="text-slate-900 dark:text-white">{Number(totalQuantity).toLocaleString('en-IN')} {unitLabel}</strong>
           </div>
         </div>
-      </section>
 
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3 lg:gap-5">
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm lg:col-span-2">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-5 lg:col-span-2">
+          <div className="flex items-start justify-between gap-3">
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white">Top customers</h2>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Ranked by recorded total amount</p>
+              <h2 className="text-base font-bold text-slate-900 dark:text-white">Payment summary</h2>
+              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Revenue collection status</p>
             </div>
-            <button onClick={() => onNavigate && onNavigate('customers')} className="text-xs font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300">View all <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" /></button>
+            <IndianRupee className="h-5 w-5 text-slate-400" />
           </div>
-          {topCustomers.length ? (
-            <div className="divide-y divide-slate-100 dark:divide-slate-700">
-              {topCustomers.map((customer, index) => {
-                const paid = Number(customer.paidAmount) || 0;
-                const total = Number(customer.totalAmount) || 0;
-                const isPaid = total > 0 && paid >= total;
-                return (
-                  <div key={customer._id || customer.whatsapp || `${customer.name}-${index}`} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
-                    <div className="flex min-w-0 items-center gap-3">
-                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-slate-100 dark:bg-slate-700 text-sm font-bold text-slate-600 dark:text-slate-200">{(customer.name || 'C').charAt(0).toUpperCase()}</span>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{customer.name || 'Customer'}</p>
-                        <p className="truncate text-xs text-slate-500 dark:text-slate-400">{customer.whatsapp || customer.phone || 'No phone number'}</p>
-                      </div>
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{currency(total)}</p>
-                      <span className={`text-[10px] font-semibold ${isPaid ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>{isPaid ? 'Paid' : 'Balance due'}</span>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="mt-5 flex items-end justify-between gap-3">
+            <p className="text-3xl font-bold text-slate-900 dark:text-white">{recoveryRate}%</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Collected</p>
+          </div>
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${recoveryRate}%` }} />
+          </div>
+          <div className="mt-5 space-y-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-slate-500 dark:text-slate-400">Total revenue</span>
+              <strong className="text-slate-900 dark:text-white">{currency(totalRevenue)}</strong>
             </div>
-          ) : (
-            <EmptyState title="No customers yet" detail="Add your first customer to see customer summaries here." />
-          )}
-        </div>
-
-        <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm">
-          <h2 className="text-base font-bold text-slate-900 dark:text-white">Quick actions</h2>
-          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Common tasks, one tap away</p>
-          <div className="mt-4 space-y-2">
-            {actions.map(({ label, description, icon: Icon, onClick, tone }) => (
-              <button key={label} onClick={onClick} className="group flex min-h-[62px] w-full items-center gap-3 rounded-xl border border-slate-200 dark:border-slate-700 p-3 text-left transition hover:border-sky-300 hover:bg-sky-50/70 dark:hover:border-sky-800 dark:hover:bg-slate-700/60 focus:outline-none focus:ring-2 focus:ring-sky-500">
-                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tone === 'sky' ? 'bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300' : tone === 'emerald' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-violet-100 text-violet-700 dark:bg-violet-950 dark:text-violet-300'}`}>
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold text-slate-800 dark:text-slate-100">{label}</span>
-                  <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">{description}</span>
-                </span>
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-400 transition group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-sky-600" />
-              </button>
-            ))}
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-emerald-600 dark:text-emerald-400">Received</span>
+              <strong className="text-emerald-600 dark:text-emerald-400">{currency(totalReceive)}</strong>
+            </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-rose-600 dark:text-rose-400">Pending</span>
+              <strong className="text-rose-600 dark:text-rose-400">{currency(totalPending)}</strong>
+            </div>
           </div>
-          <div className="mt-4 rounded-xl bg-slate-50 dark:bg-slate-900/60 p-3">
-            <div className="flex items-center gap-2 text-xs font-semibold text-slate-700 dark:text-slate-200"><Users className="h-4 w-4 text-sky-600" /> Customer base</div>
-            <p className="mt-1 text-2xl font-bold text-slate-900 dark:text-white">{totalCustomers}</p>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Customers in your account</p>
-          </div>
+          <button
+            type="button"
+            onClick={() => onNavigate && onNavigate('payments')}
+            className="mt-5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-400 hover:text-sky-700 dark:border-slate-600 dark:text-slate-200 dark:hover:text-sky-300"
+          >
+            View payments <ArrowUpRight className="h-4 w-4" />
+          </button>
         </div>
       </section>
 
-      <section className="rounded-2xl border border-slate-200/80 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 sm:p-6 shadow-sm">
-        <div className="mb-4 flex items-center justify-between gap-3">
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">Monthly overview</h2>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Milk sales summary for the selected month</p>
+          </div>
+          <select
+            aria-label="Select report month"
+            value={selectedMonth}
+            onChange={event => setSelectedMonth(event.target.value)}
+            className="min-h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-slate-800 dark:border-slate-600 dark:bg-slate-900 dark:text-white sm:w-52"
+          >
+            {availableMonths.map(month => <option key={month} value={month}>{monthLabel(month)}</option>)}
+          </select>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs">Milk sold</p>
+            <p className="mt-1 break-words text-sm font-bold text-slate-900 dark:text-white sm:text-lg">{monthSummary.quantity}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs">Earnings</p>
+            <p className="mt-1 break-words text-sm font-bold text-slate-900 dark:text-white sm:text-lg">{currency(monthSummary.earnings)}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/60">
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 sm:text-xs">Entries</p>
+            <p className="mt-1 text-sm font-bold text-slate-900 dark:text-white sm:text-lg">{monthSummary.entries}</p>
+          </div>
+        </div>
+        <p className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+          {monthSummary.customers} customers served in {monthLabel(selectedMonth)}.
+        </p>
+      </section>
+
+      <section className="rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 shadow-sm sm:p-5">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div>
             <h2 className="text-base font-bold text-slate-900 dark:text-white">Recent milk entries</h2>
-            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Latest saved records</p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Your latest 5 records</p>
           </div>
-          <button onClick={() => onNavigate && onNavigate('records')} className="text-xs font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300">All records <ArrowUpRight className="ml-1 inline h-3.5 w-3.5" /></button>
+          <button
+            type="button"
+            onClick={() => onNavigate && onNavigate('records')}
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300"
+          >
+            View all <ArrowUpRight className="h-3.5 w-3.5" />
+          </button>
         </div>
         {recentRecords.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-left text-sm">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400">
-                  <th className="pb-3 pr-4 font-medium">Customer</th>
-                  <th className="pb-3 pr-4 font-medium">Date</th>
-                  <th className="pb-3 pr-4 font-medium">Shift</th>
-                  <th className="pb-3 pr-4 text-right font-medium">Quantity</th>
-                  <th className="pb-3 text-right font-medium">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {recentRecords.map((record, index) => (
-                  <tr key={record._id || index} className="text-slate-700 dark:text-slate-200">
-                    <td className="py-3 pr-4 font-medium">{record.customer || record.customerName || 'Customer'}</td>
-                    <td className="py-3 pr-4 text-slate-500 dark:text-slate-400">{record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-IN') : '—'}</td>
-                    <td className="py-3 pr-4 capitalize text-slate-500 dark:text-slate-400">{record.shift || '—'}</td>
-                    <td className="py-3 pr-4 text-right font-medium">{Number(record.quantityKg) || 0} kg</td>
-                    <td className="py-3 text-right font-semibold">{currency(record.amount)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
+            {recentRecords.map((record, index) => (
+              <div key={record._id || index} className="flex items-center justify-between gap-3 py-3 first:pt-1 last:pb-1">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">{record.customer || record.customerName || 'Customer'}</p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                    {record.createdAt ? new Date(record.createdAt).toLocaleDateString('en-IN') : '—'} · {record.shift || '—'}
+                  </p>
+                </div>
+                <div className="shrink-0 text-right">
+                  <p className="text-sm font-bold text-slate-900 dark:text-white">{Number(record.quantityKg) || 0} {record.quantityUnit === 'liter' ? 'L' : 'kg'}</p>
+                  <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{currency(record.amount)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
-          <EmptyState title="No milk entries yet" detail="Your latest milk records will show here after you save an entry." />
+          <EmptyState title="No milk entries yet" detail="Add your first milk entry to see recent activity here." />
         )}
       </section>
     </div>
