@@ -45,7 +45,7 @@ export default function CustomerManagementPage({
   const submitCustomerEdit = async event => {
     event.preventDefault();
     const name = editForm.name.trim();
-    const whatsapp = editForm.whatsapp.replace(/\\D/g, '');
+    const whatsapp = editForm.whatsapp.replace(/\D/g, '');
     if (!name) return setEditError('Customer name is required.');
     if (!/^[6-9][0-9]{9}$/.test(whatsapp)) return setEditError('Enter a valid 10-digit Indian mobile number.');
     if (!onEditCustomer || !editingCustomer?._id) return setEditError('Customer update is unavailable. Please refresh and try again.');
