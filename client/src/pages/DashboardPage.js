@@ -30,7 +30,7 @@ const monthLabel = (key) => {
 
 function SummaryCard({ label, value, note, icon: Icon, tone }) {
   const tones = {
-    blue: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-95050 dark:text-emerald-300',
+    blue: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
     green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
     purple: 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300',
     red: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
