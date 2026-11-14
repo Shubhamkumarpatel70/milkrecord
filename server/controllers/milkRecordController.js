@@ -39,7 +39,7 @@ exports.createMilkRecord = async (req, res) => {
 exports.updateMilkRecord = async (req, res) => {
   try {
     const ownerId = req.authUser._id;
-    const { customer, quantityKg, quantityUnit = 'kg', amount, shift, createdAt } = req.body;
+    const { customer, quantityKg, quantityUnit = 'kg', amount, ratePerUnit, shift, createdAt } = req.body;
     const quantity = Number(quantityKg);
     const entryDate = new Date(createdAt);
     if (!String(customer || '').trim() || !Number.isFinite(quantity) || quantity <= 0 ||
@@ -51,7 +51,9 @@ exports.updateMilkRecord = async (req, res) => {
     const record = await MilkRecord.findOne({ _id: req.params.recordId, user: ownerId });
     if (!record) return res.status(404).json({ message: 'Milk record not found.' });
     const historicalRate = record.ratePerUnit !== undefined && record.ratePerUnit !== null ? Number(record.ratePerUnit) : Number(record.amount || 0) / Number(record.quantityKg || 1);
-    const totalAmount = Math.round(quantity * historicalRate * 100) / 100;
+    const effectiveRate = ratePerUnit !== undefined ? Number(ratePerUnit) : historicalRate;
+    if (!Number.isFinite(effectiveRate) || effectiveRate < 0) return res.status(400).json({ message: 'Enter a valid milk rate.' });
+    const totalAmount = Math.round(quantity * effectiveRate * 100) / 100;
     if (totalAmount < Number(record.paidAmount || 0)) {
       return res.status(400).json({ message: 'Amount cannot be lower than the payment already received.' });
     }
@@ -65,8 +67,8 @@ exports.updateMilkRecord = async (req, res) => {
     record.customerId = customerDoc._id;
     record.whatsapp = customerDoc.whatsapp;
     record.quantityKg = quantity;
-    record.quantityUnit = record.quantityUnit || quantityUnit;
-    record.ratePerUnit = historicalRate;
+    record.quantityUnit = quantityUnit;
+    record.ratePerUnit = effectiveRate;
     record.amount = totalAmount;
     record.shift = shift;
     record.createdAt = entryDate;
@@ -77,6 +79,19 @@ exports.updateMilkRecord = async (req, res) => {
   } catch (err) {
     console.error('Update milk record error:', err);
     return res.status(500).json({ message: 'Unable to update milk record.' });
+  }
+};
+
+// Permanently delete one milk entry owned by the authenticated dairy account.
+exports.deleteMilkRecord = async (req, res) => {
+  try {
+    const ownerId = req.authUser._id;
+    const record = await MilkRecord.findOneAndDelete({ _id: req.params.recordId, user: ownerId });
+    if (!record) return res.status(404).json({ message: 'Milk entry not found.' });
+    return res.json({ message: 'Milk entry deleted successfully.', recordId: String(record._id) });
+  } catch (err) {
+    console.error('Delete milk record error:', err);
+    return res.status(500).json({ message: 'Unable to delete milk entry.' });
   }
 };
 
