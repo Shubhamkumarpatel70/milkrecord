@@ -7,6 +7,10 @@ dotenv.config();
 
 const app = express();
 
+// Render terminates TLS at one trusted reverse-proxy hop. This lets Express
+// identify the originating client IP for per-IP authentication rate limits.
+app.set('trust proxy', 1);
+
 // CORS configuration - Fixed to properly set access-control-allow-origin
 app.use(cors({
   origin: function (origin, callback) {
@@ -32,7 +36,6 @@ app.use(express.json());
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.path} - Origin: ${req.headers.origin}`);
   
-  // Ensure CORS headers are set for all responses
   const allowedOrigins = ['https://milkrecord-frontend.onrender.com', 'http://localhost:3000'];
   const origin = req.headers.origin;
   
@@ -123,17 +126,15 @@ try {
 // Global error handlers to prevent crashes
 process.on('uncaughtException', (error) => {
   console.error('Uncaught Exception:', error);
-  // Don't exit the process, just log the error
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit the process, just log the error
 });
 
 // MongoDB Connection
 const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/milk-record';
-console.log('Connecting to MongoDB:', mongoUri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@'));
+console.log('Connecting to MongoDB:', mongoUri.replace(/\\/\\/[^:]+:[^@]+@/, '//***:***@'));
 
 mongoose.connect(mongoUri)
 .then(() => {
