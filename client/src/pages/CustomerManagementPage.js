@@ -138,7 +138,7 @@ export default function CustomerManagementPage({
     <div className={compact ? 'flex items-center gap-1.5 flex-wrap' : 'grid grid-cols-2 gap-2'}>
       {onViewCustomer && (
         <button type="button" onClick={() => onViewCustomer(customer)}
-          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-sky-50 px-3 text-xs font-bold text-sky-700 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-300">
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-95050 dark:text-emerald-300">
           <Eye className="h-4 w-4" /> View
         </button>
       )}
@@ -155,7 +155,7 @@ export default function CustomerManagementPage({
         </button>
       )}
       <button type="button" onClick={() => setTransactionCustomer(customer)}
-        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-violet-200 px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 dark:border-violet-900 dark:text-violet-300 dark:hover:bg-violet-950/40">
+        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-teal-200 px-3 text-xs font-semibold text-teal-700 hover:bg-teal-50 dark:border-teal-900 dark:text-teal-300 dark:hover:bg-teal-950/40">
         <ReceiptText className="h-4 w-4" /> Ledger
       </button>
       {onEditCustomer && (
@@ -175,37 +175,37 @@ export default function CustomerManagementPage({
 
   return (
     <main className="w-full max-w-full space-y-5 overflow-x-hidden pb-8">
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-800 p-5 text-white shadow-lg sm:p-7">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-700 via-emerald-700 to-teal-800 p-5 text-white shadow-lg sm:p-7">
         <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-cyan-300/10" />
+        <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-emerald-300/10" />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100">
               <Users className="h-4 w-4" /> Customer directory
             </div>
             <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Customers</h1>
-            <p className="mt-1 max-w-xl text-sm text-blue-100">Manage customer details, milk records and payment dues from one place.</p>
+            <p className="mt-1 max-w-xl text-sm text-emerald-100">Manage customer details, milk records and payment dues from one place.</p>
           </div>
           <button type="button" onClick={onAddCustomer}
-            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-extrabold text-blue-700 shadow-md transition hover:bg-sky-50 sm:w-auto">
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-extrabold text-emerald-700 shadow-md transition hover:bg-emerald-50 sm:w-auto">
             <Plus className="h-4 w-4" /> Add customer
           </button>
         </div>
         <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
           <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-blue-100">Total customers</p>
+            <p className="text-[11px] font-semibold text-emerald-100">Total customers</p>
             <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.total}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-blue-100">Fully paid</p>
+            <p className="text-[11px] font-semibold text-emerald-100">Fully paid</p>
             <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.paid}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-blue-100">Payment pending</p>
+            <p className="text-[11px] font-semibold text-emerald-100">Payment pending</p>
             <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.pending}</p>
           </div>
           <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
-            <p className="text-[11px] font-semibold text-blue-100">Outstanding amount</p>
+            <p className="text-[11px] font-semibold text-emerald-100">Outstanding amount</p>
             <p className="mt-1 text-2xl font-extrabold tabular-nums">₹{money(customerStats.outstanding)}</p>
           </div>
         </div>
@@ -217,7 +217,7 @@ export default function CustomerManagementPage({
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}
               placeholder="Search name, mobile number or customer ID..."
-              className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-sky-950" />
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-emerald-950" />
           </div>
           <div className="flex min-w-0 items-center gap-1 overflow-x-auto pb-1 lg:pb-0">
             {[
@@ -226,7 +226,7 @@ export default function CustomerManagementPage({
               { id: 'paid', label: 'Paid', count: customerStats.paid }
             ].map(item => (
               <button key={item.id} type="button" onClick={() => setFilterStatus(item.id)}
-                className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition ${filterStatus === item.id ? 'bg-sky-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition ${filterStatus === item.id ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
                 {item.label}<span className={`rounded-md px-1.5 py-0.5 text-[10px] ${filterStatus === item.id ? 'bg-white/20' : 'bg-white/70 dark:bg-slate-800'}`}>{item.count}</span>
               </button>
             ))}
@@ -236,7 +236,7 @@ export default function CustomerManagementPage({
           <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
             <SlidersHorizontal className="h-3.5 w-3.5" />
             <span>Showing <strong className="text-slate-800 dark:text-slate-100">{filteredCustomers.length}</strong> of {customers.length} customers</span>
-            {(searchTerm || filterStatus !== 'all') && <button type="button" onClick={resetFilters} className="ml-1 inline-flex items-center gap-1 font-bold text-sky-600"><RotateCcw className="h-3 w-3" /> Reset</button>}
+            {(searchTerm || filterStatus !== 'all') && <button type="button" onClick={resetFilters} className="ml-1 inline-flex items-center gap-1 font-bold text-emerald-600"><RotateCcw className="h-3 w-3" /> Reset</button>}
           </div>
           <div className="flex items-center gap-2">
             <label className="sr-only" htmlFor="customer-sort">Sort customers</label>
@@ -251,9 +251,9 @@ export default function CustomerManagementPage({
             </div>
             <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
               <button type="button" aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}
-                className={`rounded-md p-2 ${viewMode === 'grid' ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><Grid className="h-4 w-4" /></button>
+                className={`rounded-md p-2 ${viewMode === 'grid' ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><Grid className="h-4 w-4" /></button>
               <button type="button" aria-label="List view" aria-pressed={viewMode === 'table'} onClick={() => setViewMode('table')}
-                className={`rounded-md p-2 ${viewMode === 'table' ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><List className="h-4 w-4" /></button>
+                className={`rounded-md p-2 ${viewMode === 'table' ? 'bg-white text-emerald-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><List className="h-4 w-4" /></button>
             </div>
           </div>
         </div>
@@ -265,7 +265,7 @@ export default function CustomerManagementPage({
             <Search className="mx-auto h-8 w-8 text-slate-300" />
             <h3 className="mt-3 font-bold text-slate-800 dark:text-slate-100">No matching customers</h3>
             <p className="mt-1 text-sm text-slate-500">Try another search or clear the selected filters.</p>
-            <button type="button" onClick={resetFilters} className="mt-4 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white">Clear filters</button>
+            <button type="button" onClick={resetFilters} className="mt-4 rounded-xl bg-emerald-600 px-4 py-2.5 text-xs font-bold text-white">Clear filters</button>
           </div>
         ) : <EmptyState type="customers" title="No Customers Added Yet" onAction={onAddCustomer} />
       ) : viewMode === 'grid' ? (
@@ -283,7 +283,7 @@ export default function CustomerManagementPage({
                 <div className="p-4 sm:p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 items-center gap-3">
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-lg font-extrabold text-white shadow-sm">{(customer.name || 'C').charAt(0).toUpperCase()}</div>
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-extrabold text-white shadow-sm">{(customer.name || 'C').charAt(0).toUpperCase()}</div>
                       <div className="min-w-0">
                         <h2 className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{customer.name || 'Unnamed customer'}</h2>
                         <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><Phone className="h-3 w-3" />{customer.whatsapp ? `+91 ${customer.whatsapp}` : 'No mobile number'}</p>
@@ -309,7 +309,7 @@ export default function CustomerManagementPage({
                     </div>
                     <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Milk supplied</p>
-                      <p className="mt-1 flex items-center gap-1 text-sm font-bold text-sky-700 dark:text-sky-300"><Milk className="h-3.5 w-3.5" />{milkLabel}</p>
+                      <p className="mt-1 flex items-center gap-1 text-sm font-bold text-emerald-700 dark:text-emerald-300"><Milk className="h-3.5 w-3.5" />{milkLabel}</p>
                     </div>
                   </div>
 
@@ -318,7 +318,7 @@ export default function CustomerManagementPage({
                       <span>Payment progress</span><span>{paidPercent}% received</span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
-                      <div className={`h-full rounded-full ${paid ? 'bg-emerald-500' : 'bg-sky-500'}`} style={{ width: `${paidPercent}%` }} />
+                      <div className={`h-full rounded-full ${paid ? 'bg-emerald-500' : 'bg-emerald-500'}`} style={{ width: `${paidPercent}%` }} />
                     </div>
                   </div>
                   <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400">
@@ -368,14 +368,14 @@ export default function CustomerManagementPage({
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !editSaving) setEditingCustomer(null); }}>
           <section role="dialog" aria-modal="true" aria-labelledby="edit-customer-title" className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
-              <div><p className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Customer details</p><h2 id="edit-customer-title" className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">Edit customer</h2><p className="mt-1 text-xs text-slate-500">Update name and mobile number.</p></div>
+              <div><p className="text-[10px] font-bold uppercase tracking-widest text-emerald-600">Customer details</p><h2 id="edit-customer-title" className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">Edit customer</h2><p className="mt-1 text-xs text-slate-500">Update name and mobile number.</p></div>
               <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800" aria-label="Close edit form"><X className="h-5 w-5" /></button>
             </div>
             <form onSubmit={submitCustomerEdit} className="space-y-4 p-5">
-              <div><label htmlFor="edit-customer-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Customer name</label><input id="edit-customer-name" autoFocus required maxLength={100} value={editForm.name} onChange={event => setEditForm(current => ({ ...current, name: event.target.value }))} className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Enter customer name" /></div>
-              <div><label htmlFor="edit-customer-mobile" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile / WhatsApp number</label><div className="flex"><span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 px-3 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800">+91</span><input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\s()-]/g, '') }))} className="min-h-11 min-w-0 flex-1 rounded-r-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="10-digit mobile number" /></div><p className="mt-1 text-[11px] text-slate-400">Enter a valid 10-digit Indian mobile number.</p></div>
+              <div><label htmlFor="edit-customer-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Customer name</label><input id="edit-customer-name" autoFocus required maxLength={100} value={editForm.name} onChange={event => setEditForm(current => ({ ...current, name: event.target.value }))} className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Enter customer name" /></div>
+              <div><label htmlFor="edit-customer-mobile" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile / WhatsApp number</label><div className="flex"><span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 px-3 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800">+91</span><input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\s()-]/g, '') }))} className="min-h-11 min-w-0 flex-1 rounded-r-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-emerald-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="10-digit mobile number" /></div><p className="mt-1 text-[11px] text-slate-400">Enter a valid 10-digit Indian mobile number.</p></div>
               {editError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-700">{editError}</div>}
-              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end"><button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={editSaving} className="min-h-11 rounded-xl bg-sky-600 px-5 text-sm font-bold text-white shadow-md hover:bg-sky-700 disabled:opacity-60">{editSaving ? 'Saving…' : 'Save changes'}</button></div>
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end"><button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={editSaving} className="min-h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-md hover:bg-emerald-700 disabled:opacity-60">{editSaving ? 'Saving…' : 'Save changes'}</button></div>
             </form>
           </section>
         </div>
