@@ -422,7 +422,7 @@ export default function CustomerManagementPage({
                 <label htmlFor="edit-customer-mobile" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Mobile / WhatsApp number</label>
                 <div className="flex">
                   <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 text-sm font-semibold text-slate-500">+91</span>
-                  <input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\\s()-]/g, '') }))} className="min-w-0 flex-1 min-h-11 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="10-digit mobile number" />
+                  <input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\s()-]/g, '') }))} className="min-w-0 flex-1 min-h-11 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="10-digit mobile number" />
                 </div>
                 <p className="mt-1 text-[11px] text-slate-400">Use a valid 10-digit Indian mobile number.</p>
               </div>
