@@ -223,3 +223,31 @@ exports.deleteCustomer = async (req, res) => {
     return res.status(400).json({ message: 'Unable to delete customer.' });
   }
 };
+
+
+exports.updateCustomer = async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const whatsapp = String(req.body.whatsapp || '').replace(/\\D/g, '');
+    if (!name) return res.status(400).json({ message: 'Customer name is required.' });
+    if (name.length > 100) return res.status(400).json({ message: 'Customer name must be 100 characters or fewer.' });
+    if (!/^[6-9][0-9]{9}$/.test(whatsapp)) {
+      return res.status(400).json({ message: 'Enter a valid 10-digit Indian mobile number.' });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { _id: req.params.id, user: req.authUser._id },
+      { $set: { name, whatsapp } },
+      { new: true, runValidators: true }
+    );
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+    return res.json({ message: 'Customer updated successfully.', customer });
+  } catch (err) {
+    if (err.code === 11000) {
+      return res.status(409).json({ message: 'This mobile number is already used by another customer.' });
+    }
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid customer ID.' });
+    console.error('Update customer error:', err);
+    return res.status(500).json({ message: 'Unable to update customer right now.' });
+  }
+};
