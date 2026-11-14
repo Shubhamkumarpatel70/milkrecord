@@ -283,9 +283,9 @@ export function MainAppContent() {
       setEditingRecordId(null);
       const updatedMonth = String(editRecordForm.date || indiaDateKey()).slice(0, 7);
       if (updatedMonth !== selectedMonth) setSelectedMonth(updatedMonth);
+      await refreshData();
       const details = await axios.get(`/api/milk-records/details?month=${updatedMonth}`);
       setRecords(Array.isArray(details.data?.records) ? details.data.records : []);
-      await refreshData();
       alert('Milk record updated successfully.');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update milk record.');
