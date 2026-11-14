@@ -8,6 +8,7 @@ router.post('/', authenticate, customerController.createCustomer);
 router.get('/', authenticate, customerController.getAllCustomers);
 router.get('/:id', authenticate, customerController.getCustomerById);
 router.put('/:id', authenticate, customerController.updateCustomer);
+router.delete('/:customerId/payments/:transactionId', authenticate, customerController.deletePaymentTransaction);
 router.delete('/:customerId', authenticate, customerController.deleteCustomer);
 
 // Customer data endpoints also require an authenticated owner session.
