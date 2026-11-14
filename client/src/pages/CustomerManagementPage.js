@@ -26,7 +26,8 @@ export default function CustomerManagementPage({
   onShareCustomer,
   onMarkPayment,
   onDeleteCustomer,
-  onEditCustomer
+  onEditCustomer,
+  onDeletePaymentTransaction
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -37,6 +38,7 @@ export default function CustomerManagementPage({
   const [editForm, setEditForm] = useState({ name: '', whatsapp: '' });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [deletingTransactionId, setDeletingTransactionId] = useState('');
 
   const formatDate = value => {
     if (!value) return '—';
@@ -397,8 +399,38 @@ export default function CustomerManagementPage({
                 <div className="py-10 text-center text-sm text-slate-500">No dated payment transactions found.<p className="mt-1 text-xs">Payments recorded before transaction history was enabled cannot be reconstructed individually.</p></div>
               ) : [...transactionCustomer.paymentTransactions].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate)).map((tx, index) => (
                 <div key={tx._id || index} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
-                  <div className="min-w-0"><p className="font-bold text-slate-800 dark:text-slate-100">{formatDate(tx.paymentDate)}</p><p className="mt-1 break-words text-xs text-slate-500">{tx.remark || 'No remark'}</p></div>
-                  <p className="shrink-0 font-extrabold text-emerald-600 dark:text-emerald-400">₹{money(tx.amount)}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold text-slate-800 dark:text-slate-100">{formatDate(tx.paymentDate)}</p>
+                    <p className="mt-1 break-words text-xs text-slate-500">{tx.remark || 'No remark'}</p>
+                    {tx.billingMonth && <p className="mt-1 text-[10px] font-semibold text-slate-400">Applied to {tx.billingMonth}</p>}
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-2">
+                    <p className="font-extrabold text-emerald-600 dark:text-emerald-400">₹{money(tx.amount)}</p>
+                    <button
+                      type="button"
+                      disabled={!tx._id || deletingTransactionId === String(tx._id) || !onDeletePaymentTransaction}
+                      onClick={async () => {
+                        if (!tx._id) return;
+                        const confirmed = window.confirm(`Delete payment of ₹${money(tx.amount)} dated ${formatDate(tx.paymentDate)} for ${transactionCustomer.name}? The received amount will be reversed from the milk records.`);
+                        if (!confirmed) return;
+                        setDeletingTransactionId(String(tx._id));
+                        try {
+                          await onDeletePaymentTransaction(transactionCustomer._id, tx._id);
+                          setTransactionCustomer(previous => previous ? {
+                            ...previous,
+                            paymentTransactions: (previous.paymentTransactions || []).filter(item => String(item._id) !== String(tx._id))
+                          } : previous);
+                        } catch (error) {
+                          window.alert(error.response?.data?.message || error.message || 'Payment transaction could not be deleted.');
+                        } finally {
+                          setDeletingTransactionId('');
+                        }
+                      }}
+                      className="inline-flex min-h-8 items-center justify-center gap-1 rounded-lg border border-rose-200 px-2.5 text-[11px] font-bold text-rose-600 transition hover:bg-rose-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-rose-900/60 dark:text-rose-400 dark:hover:bg-rose-950/30"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" /> {deletingTransactionId === String(tx._id) ? 'Deleting…' : 'Delete'}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
