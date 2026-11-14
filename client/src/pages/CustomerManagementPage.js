@@ -1,20 +1,22 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
-  Users,
-  Search,
-  Filter,
-  Plus,
-  Grid,
-  List,
-  Eye,
-  Send,
-  CreditCard,
-  ReceiptText,
-  X,
-  Trash2,
-  Pencil
+  Users, Search, Plus, Grid, List, Eye, Send, CreditCard, ReceiptText,
+  X, Trash2, Pencil, Wallet, CheckCircle2, AlertCircle, ArrowUpDown,
+  Phone, CalendarDays, Milk, SlidersHorizontal, RotateCcw
 } from 'lucide-react';
 import EmptyState from '../components/common/EmptyState';
+
+const money = value => Number(value || 0).toLocaleString('en-IN', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2
+});
+
+const getPending = customer => Math.max(
+  0,
+  Number(customer.totalAmount || 0) - Number(customer.paidAmount || 0)
+);
+
+const getCustomerStatus = customer => getPending(customer) <= 0 ? 'paid' : 'pending';
 
 export default function CustomerManagementPage({
   customers = [],
@@ -24,17 +26,82 @@ export default function CustomerManagementPage({
   onShareCustomer,
   onMarkPayment,
   onDeleteCustomer,
-  onEditCustomer,
-  isAuthenticated
+  onEditCustomer
 }) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStatus, setFilterStatus] = useState('all'); // 'all' | 'paid' | 'unpaid'
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'table'
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [viewMode, setViewMode] = useState('grid');
+  const [sortBy, setSortBy] = useState('name');
   const [transactionCustomer, setTransactionCustomer] = useState(null);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editForm, setEditForm] = useState({ name: '', whatsapp: '' });
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+
+  const formatDate = value => {
+    if (!value) return '—';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '—';
+    return new Intl.DateTimeFormat('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric', timeZone: 'Asia/Kolkata'
+    }).format(date);
+  };
+
+  const customerStats = useMemo(() => {
+    const total = customers.length;
+    const pending = customers.filter(customer => getPending(customer) > 0);
+    const paid = total - pending.length;
+    const outstanding = customers.reduce((sum, customer) => sum + getPending(customer), 0);
+    const received = customers.reduce((sum, customer) => sum + Number(customer.paidAmount || 0), 0);
+    return { total, paid, pending: pending.length, outstanding, received };
+  }, [customers]);
+
+  const recordsByCustomer = useMemo(() => {
+    const map = new Map();
+    records.forEach(record => {
+      const customerId = String(record.customerId?._id || record.customerId || '');
+      const customerName = typeof record.customer === 'object'
+        ? record.customer?.name
+        : (record.customerName || record.customer);
+      const key = customerId ? `id:${customerId}` : (customerName ? `name:${String(customerName).trim().toLowerCase()}` : '');
+      if (!key) return;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(record);
+    });
+    return map;
+  }, [records]);
+
+  const filteredCustomers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    const result = customers.filter(customer => {
+      const matchesSearch = !query ||
+        String(customer.name || '').toLowerCase().includes(query) ||
+        String(customer.whatsapp || '').replace(/\\D/g, '').includes(query.replace(/\\D/g, '')) ||
+        String(customer._id || '').toLowerCase().includes(query);
+      const status = getCustomerStatus(customer);
+      return matchesSearch && (filterStatus === 'all' || status === filterStatus);
+    });
+
+    return result.sort((a, b) => {
+      if (sortBy === 'pending') return getPending(b) - getPending(a);
+      if (sortBy === 'recent') return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+      return String(a.name || '').localeCompare(String(b.name || ''));
+    });
+  }, [customers, searchTerm, filterStatus, sortBy]);
+
+  const getMilkSummary = customer => {
+    const id = String(customer._id || '');
+    const byId = id ? recordsByCustomer.get(`id:${id}`) : null;
+    const byName = recordsByCustomer.get(`name:${String(customer.name || '').trim().toLowerCase()}`);
+    const entries = byId || byName || [];
+    return entries.reduce((total, record) => {
+      const quantity = Number(record.quantityKg ?? record.quantity ?? 0);
+      if (!Number.isFinite(quantity)) return total;
+      if (String(record.quantityUnit || 'kg').toLowerCase().startsWith('lit')) total.liter += quantity;
+      else total.kg += quantity;
+      return total;
+    }, { kg: 0, liter: 0 });
+  };
 
   const openEditCustomer = customer => {
     setEditingCustomer(customer);
@@ -45,7 +112,7 @@ export default function CustomerManagementPage({
   const submitCustomerEdit = async event => {
     event.preventDefault();
     const name = editForm.name.trim();
-    const whatsapp = editForm.whatsapp.replace(/\D/g, '');
+    const whatsapp = editForm.whatsapp.replace(/\\D/g, '');
     if (!name) return setEditError('Customer name is required.');
     if (!/^[6-9][0-9]{9}$/.test(whatsapp)) return setEditError('Enter a valid 10-digit Indian mobile number.');
     if (!onEditCustomer || !editingCustomer?._id) return setEditError('Customer update is unavailable. Please refresh and try again.');
@@ -61,336 +128,233 @@ export default function CustomerManagementPage({
     }
   };
 
-  const formatDate = value => {
-    if (!value) return '—';
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '—';
-    const parts = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Kolkata' }).formatToParts(date);
-    const dateParts = Object.fromEntries(parts.map(part => [part.type, part.value]));
-    return `${dateParts.day}-${dateParts.month}-${dateParts.year}`;
+  const resetFilters = () => {
+    setSearchTerm('');
+    setFilterStatus('all');
+    setSortBy('name');
   };
 
-  // Filter customers based on search & status
-  const filteredCustomers = customers.filter(c => {
-    const matchesSearch = c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          c.whatsapp?.includes(searchTerm);
-    const pending = Math.max(0, (c.totalAmount || 0) - (c.paidAmount || 0));
-    const isPaid = c.status === 'paid' || pending === 0;
-    const matchesStatus = filterStatus === 'all' || 
-                          (filterStatus === 'paid' && isPaid) ||
-                          (filterStatus === 'unpaid' && !isPaid);
-    return matchesSearch && matchesStatus;
-  });
+  const CustomerActions = ({ customer, compact = false }) => (
+    <div className={compact ? 'flex items-center gap-1.5 flex-wrap' : 'grid grid-cols-2 gap-2'}>
+      {onViewCustomer && (
+        <button type="button" onClick={() => onViewCustomer(customer)}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-sky-50 px-3 text-xs font-bold text-sky-700 hover:bg-sky-100 dark:bg-sky-950/50 dark:text-sky-300">
+          <Eye className="h-4 w-4" /> View
+        </button>
+      )}
+      {onMarkPayment && (
+        <button type="button" onClick={() => onMarkPayment(customer)}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl bg-emerald-50 px-3 text-xs font-bold text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300">
+          <CreditCard className="h-4 w-4" /> Receive
+        </button>
+      )}
+      {onShareCustomer && (
+        <button type="button" onClick={() => onShareCustomer(customer.userId, customer.name, customer.whatsapp)}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-slate-200 px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800">
+          <Send className="h-4 w-4" /> WhatsApp
+        </button>
+      )}
+      <button type="button" onClick={() => setTransactionCustomer(customer)}
+        className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-violet-200 px-3 text-xs font-semibold text-violet-700 hover:bg-violet-50 dark:border-violet-900 dark:text-violet-300 dark:hover:bg-violet-950/40">
+        <ReceiptText className="h-4 w-4" /> Ledger
+      </button>
+      {onEditCustomer && (
+        <button type="button" onClick={() => openEditCustomer(customer)}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-amber-200 px-3 text-xs font-semibold text-amber-700 hover:bg-amber-50 dark:border-amber-900 dark:text-amber-300 dark:hover:bg-amber-950/40">
+          <Pencil className="h-4 w-4" /> Edit
+        </button>
+      )}
+      {onDeleteCustomer && (
+        <button type="button" onClick={() => onDeleteCustomer(customer._id, customer.name)}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-xl border border-rose-200 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 dark:border-rose-900 dark:text-rose-300 dark:hover:bg-rose-950/40">
+          <Trash2 className="h-4 w-4" /> Delete
+        </button>
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in pb-8 w-full max-w-full overflow-x-hidden">
-      
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-800 p-4 sm:p-6 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-sky-100 dark:bg-sky-950 text-sky-600 dark:text-sky-400 shrink-0">
-            <Users className="w-6 h-6" />
+    <main className="w-full max-w-full space-y-5 overflow-x-hidden pb-8">
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-sky-700 via-blue-700 to-indigo-800 p-5 text-white shadow-lg sm:p-7">
+        <div className="pointer-events-none absolute -right-12 -top-16 h-56 w-56 rounded-full bg-white/10" />
+        <div className="pointer-events-none absolute -bottom-24 right-24 h-48 w-48 rounded-full bg-cyan-300/10" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-sky-100">
+              <Users className="h-4 w-4" /> Customer directory
+            </div>
+            <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">Customers</h1>
+            <p className="mt-1 max-w-xl text-sm text-blue-100">Manage customer details, milk records and payment dues from one place.</p>
           </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-slate-800 dark:text-slate-100 leading-tight">Customer Management</h1>
-            <p className="text-xs text-slate-500">Manage dairy customers, track unpaid dues, and share WhatsApp reports.</p>
-          </div>
-        </div>
-
-        <button
-          onClick={onAddCustomer}
-          className="btn-primary text-xs py-2.5 px-4 sm:px-5 flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all min-h-[44px] w-full sm:w-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add New Customer</span>
-        </button>
-      </div>
-
-      {/* Toolbar: Search, Filter, View Mode Toggle */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-3 sm:gap-4 bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-xs">
-        
-        {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 absolute left-3 top-3 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by name or WhatsApp..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2.5 text-xs bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl outline-none focus:border-sky-500 text-slate-800 dark:text-slate-100 placeholder-slate-400 min-h-[44px]"
-          />
-        </div>
-
-        {/* Status Filters */}
-        <div className="flex items-center gap-1.5 w-full md:w-auto overflow-x-auto text-xs pb-1 sm:pb-0">
-          <span className="text-slate-400 font-medium mr-1 flex items-center gap-1 shrink-0">
-            <Filter className="w-3.5 h-3.5" /> Filter:
-          </span>
-          {['all', 'paid', 'unpaid'].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-3 py-2 rounded-lg capitalize font-semibold transition-colors min-h-[36px] ${
-                filterStatus === status
-                  ? 'bg-sky-500 text-white shadow-xs'
-                  : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-
-        {/* View Mode Toggle */}
-        <div className="flex items-center justify-end w-full md:w-auto gap-1 bg-slate-100 dark:bg-slate-700 p-1 rounded-xl">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-xs' : 'text-slate-400'}`}
-            title="Grid View"
-          >
-            <Grid className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setViewMode('table')}
-            className={`p-2 rounded-lg transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-sky-600 shadow-xs' : 'text-slate-400'}`}
-            title="Table View"
-          >
-            <List className="w-4 h-4" />
+          <button type="button" onClick={onAddCustomer}
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-white px-5 text-sm font-extrabold text-blue-700 shadow-md transition hover:bg-sky-50 sm:w-auto">
+            <Plus className="h-4 w-4" /> Add customer
           </button>
         </div>
+        <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold text-blue-100">Total customers</p>
+            <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.total}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold text-blue-100">Fully paid</p>
+            <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.paid}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold text-blue-100">Payment pending</p>
+            <p className="mt-1 text-2xl font-extrabold tabular-nums">{customerStats.pending}</p>
+          </div>
+          <div className="rounded-2xl border border-white/15 bg-white/10 p-3 backdrop-blur-sm">
+            <p className="text-[11px] font-semibold text-blue-100">Outstanding amount</p>
+            <p className="mt-1 text-2xl font-extrabold tabular-nums">₹{money(customerStats.outstanding)}</p>
+          </div>
+        </div>
+      </section>
 
-      </div>
+      <section className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="relative min-w-0 flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input type="search" value={searchTerm} onChange={event => setSearchTerm(event.target.value)}
+              placeholder="Search name, mobile number or customer ID..."
+              className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 py-2 pl-10 pr-3 text-sm text-slate-800 outline-none transition focus:border-sky-500 focus:ring-2 focus:ring-sky-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-sky-950" />
+          </div>
+          <div className="flex min-w-0 items-center gap-1 overflow-x-auto pb-1 lg:pb-0">
+            {[
+              { id: 'all', label: 'All', count: customerStats.total },
+              { id: 'pending', label: 'Pending', count: customerStats.pending },
+              { id: 'paid', label: 'Paid', count: customerStats.paid }
+            ].map(item => (
+              <button key={item.id} type="button" onClick={() => setFilterStatus(item.id)}
+                className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition ${filterStatus === item.id ? 'bg-sky-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                {item.label}<span className={`rounded-md px-1.5 py-0.5 text-[10px] ${filterStatus === item.id ? 'bg-white/20' : 'bg-white/70 dark:bg-slate-800'}`}>{item.count}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
+          <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            <span>Showing <strong className="text-slate-800 dark:text-slate-100">{filteredCustomers.length}</strong> of {customers.length} customers</span>
+            {(searchTerm || filterStatus !== 'all') && <button type="button" onClick={resetFilters} className="ml-1 inline-flex items-center gap-1 font-bold text-sky-600"><RotateCcw className="h-3 w-3" /> Reset</button>}
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="sr-only" htmlFor="customer-sort">Sort customers</label>
+            <div className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-2 dark:border-slate-700">
+              <ArrowUpDown className="h-3.5 w-3.5 text-slate-400" />
+              <select id="customer-sort" value={sortBy} onChange={event => setSortBy(event.target.value)}
+                className="min-h-9 bg-transparent text-xs font-semibold text-slate-600 outline-none dark:text-slate-300">
+                <option value="name">Name A–Z</option>
+                <option value="pending">Highest due</option>
+                <option value="recent">Recently updated</option>
+              </select>
+            </div>
+            <div className="flex rounded-lg bg-slate-100 p-1 dark:bg-slate-700">
+              <button type="button" aria-label="Grid view" aria-pressed={viewMode === 'grid'} onClick={() => setViewMode('grid')}
+                className={`rounded-md p-2 ${viewMode === 'grid' ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><Grid className="h-4 w-4" /></button>
+              <button type="button" aria-label="List view" aria-pressed={viewMode === 'table'} onClick={() => setViewMode('table')}
+                className={`rounded-md p-2 ${viewMode === 'table' ? 'bg-white text-sky-600 shadow-sm dark:bg-slate-800' : 'text-slate-500'}`}><List className="h-4 w-4" /></button>
+            </div>
+          </div>
+        </div>
+      </section>
 
-      {/* Content Rendering */}
       {filteredCustomers.length === 0 ? (
-        <EmptyState
-          type="customers"
-          title={searchTerm ? 'No Customers Match Search' : 'No Customers Added Yet'}
-          onAction={onAddCustomer}
-        />
+        searchTerm || filterStatus !== 'all' ? (
+          <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center dark:border-slate-700 dark:bg-slate-800">
+            <Search className="mx-auto h-8 w-8 text-slate-300" />
+            <h3 className="mt-3 font-bold text-slate-800 dark:text-slate-100">No matching customers</h3>
+            <p className="mt-1 text-sm text-slate-500">Try another search or clear the selected filters.</p>
+            <button type="button" onClick={resetFilters} className="mt-4 rounded-xl bg-sky-600 px-4 py-2.5 text-xs font-bold text-white">Clear filters</button>
+          </div>
+        ) : <EmptyState type="customers" title="No Customers Added Yet" onAction={onAddCustomer} />
       ) : viewMode === 'grid' ? (
-        
-        /* Grid Card View */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-          {filteredCustomers.map((cust, idx) => {
-            const pending = Math.max(0, (cust.totalAmount || 0) - (cust.paidAmount || 0));
-            const isPaid = cust.status === 'paid' || pending === 0;
-            // records are already scoped to the selected month by MainAppContent.
-            // Match the customer's own entries and total each supported unit separately.
-            const customerRecords = records.filter(record => {
-              const recordName = typeof record.customer === 'object'
-                ? record.customer?.name
-                : (record.customerName || record.customer);
-              if (recordName) return String(recordName).trim() === String(cust.name || '').trim();
-              const recordCustomerId = String(record.customerId?._id || record.customerId || '');
-              return Boolean(cust._id && recordCustomerId === String(cust._id));
-            });
-            const milkQuantity = customerRecords.reduce((total, record) => {
-              const quantity = Number(record.quantityKg ?? record.quantity ?? 0);
-              if (!Number.isFinite(quantity)) return total;
-              if (String(record.quantityUnit || 'kg').toLowerCase() === 'liter') total.liter += quantity;
-              else total.kg += quantity;
-              return total;
-            }, { kg: 0, liter: 0 });
-            const quantityLabel = [
-              milkQuantity.kg > 0 ? `${Number(milkQuantity.kg.toFixed(2))} Kg` : '',
-              milkQuantity.liter > 0 ? `${Number(milkQuantity.liter.toFixed(2))} L` : ''
-            ].filter(Boolean).join(' + ') || '0 Kg';
-
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          {filteredCustomers.map(customer => {
+            const pending = getPending(customer);
+            const paid = pending <= 0;
+            const milk = getMilkSummary(customer);
+            const milkLabel = [milk.kg > 0 ? `${Number(milk.kg.toFixed(2))} kg` : '', milk.liter > 0 ? `${Number(milk.liter.toFixed(2))} L` : ''].filter(Boolean).join(' · ') || '0 kg';
+            const paidPercent = Number(customer.totalAmount || 0) > 0
+              ? Math.min(100, Math.round(Number(customer.paidAmount || 0) / Number(customer.totalAmount) * 100))
+              : 100;
             return (
-              <div
-                key={cust._id || idx}
-                className="p-4 sm:p-5 rounded-3xl bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 shadow-soft hover:shadow-medium transition-all flex flex-col justify-between group overflow-hidden"
-              >
-                <div>
-                  <div className="flex items-start justify-between gap-2 mb-3">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-500 to-emerald-500 text-white font-extrabold text-sm sm:text-base flex items-center justify-center shadow-md shrink-0">
-                        {(cust.name || 'C').charAt(0).toUpperCase()}
-                      </div>
-                      <div className="truncate">
-                        <h3 className="font-bold text-slate-800 dark:text-slate-100 text-sm group-hover:text-sky-600 transition-colors truncate">
-                          {cust.name}
-                        </h3>
-                        <p className="text-xs text-slate-400 font-medium truncate">
-                          {cust.whatsapp ? `+91 ${cust.whatsapp}` : 'No Phone'}
-                        </p>
+              <article key={customer._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800">
+                <div className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-sky-500 to-indigo-600 text-lg font-extrabold text-white shadow-sm">{(customer.name || 'C').charAt(0).toUpperCase()}</div>
+                      <div className="min-w-0">
+                        <h2 className="truncate text-sm font-extrabold text-slate-900 dark:text-white">{customer.name || 'Unnamed customer'}</h2>
+                        <p className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"><Phone className="h-3 w-3" />{customer.whatsapp ? `+91 ${customer.whatsapp}` : 'No mobile number'}</p>
                       </div>
                     </div>
-
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider shrink-0 ${
-                      isPaid ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-rose-100 text-rose-700 dark:bg-rose-950 dark:text-rose-300'
-                    }`}>
-                      {isPaid ? 'Paid ✓' : 'Unpaid'}
+                    <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold ${paid ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300'}`}>
+                      {paid ? <CheckCircle2 className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}{paid ? 'Paid' : 'Due pending'}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 p-3 rounded-2xl bg-slate-50 dark:bg-slate-900/50 mb-3 text-xs">
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Days</span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200">{cust.totalDays || 0} Days</span>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-slate-50 p-3 dark:bg-slate-900/70">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Total bill</p>
+                      <p className="mt-1 text-base font-extrabold text-slate-900 dark:text-white">₹{money(customer.totalAmount)}</p>
                     </div>
-                    <div>
-                      <span className="text-slate-400 block text-[10px] uppercase font-bold">Total Bill</span>
-                      <span className="font-extrabold text-slate-800 dark:text-slate-200">₹{cust.totalAmount || 0}</span>
+                    <div className={`rounded-xl p-3 ${pending > 0 ? 'bg-rose-50 dark:bg-rose-950/30' : 'bg-emerald-50 dark:bg-emerald-950/30'}`}>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Balance due</p>
+                      <p className={`mt-1 text-base font-extrabold ${pending > 0 ? 'text-rose-700 dark:text-rose-300' : 'text-emerald-700 dark:text-emerald-300'}`}>₹{money(pending)}</p>
                     </div>
-                    <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-800 pt-2 flex items-center justify-between">
-                      <span className="text-slate-400 text-[10px] font-bold uppercase">Total Milk</span>
-                      <span className="font-extrabold text-sky-600 dark:text-sky-400">{quantityLabel}</span>
+                    <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Received</p>
+                      <p className="mt-1 text-sm font-bold text-emerald-700 dark:text-emerald-300">₹{money(customer.paidAmount)}</p>
                     </div>
-                    <div className="col-span-2 border-t border-slate-200/60 dark:border-slate-800 pt-2 flex justify-between">
-                      <span className="text-slate-400 text-[10px] font-bold">Pending Dues</span>
-                      <span className={`font-extrabold ${pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        ₹{pending}
-                      </span>
+                    <div className="rounded-xl border border-slate-100 p-3 dark:border-slate-700">
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Milk supplied</p>
+                      <p className="mt-1 flex items-center gap-1 text-sm font-bold text-sky-700 dark:text-sky-300"><Milk className="h-3.5 w-3.5" />{milkLabel}</p>
                     </div>
                   </div>
+
+                  <div className="mt-3">
+                    <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                      <span>Payment progress</span><span>{paidPercent}% received</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-700">
+                      <div className={`h-full rounded-full ${paid ? 'bg-emerald-500' : 'bg-sky-500'}`} style={{ width: `${paidPercent}%` }} />
+                    </div>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="inline-flex items-center gap-1"><CalendarDays className="h-3 w-3" />{customer.month || 'Current billing period'}</span>
+                    <span>{customer.totalDays || 0} billing days</span>
+                  </div>
                 </div>
-
-                {/* Card Actions */}
-                <div className="flex items-center gap-1.5 pt-2 border-t border-slate-100 dark:border-slate-700/60">
-                  {onEditCustomer && (
-                    <button
-                      type="button"
-                      onClick={() => openEditCustomer(cust)}
-                      className="p-2 rounded-xl bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
-                      title="Edit customer details"
-                      aria-label={`Edit ${cust.name}`}
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => onViewCustomer && onViewCustomer(cust)}
-                    className="flex-1 py-2 px-2.5 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 hover:bg-sky-100 font-bold text-xs flex items-center justify-center gap-1 transition-colors min-h-[38px]"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View</span>
-                  </button>
-
-                  <button
-                    onClick={() => onMarkPayment && onMarkPayment(cust)}
-                    className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 transition-colors min-h-[38px] ${
-                      isPaid
-                        ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                        : 'bg-rose-50 text-rose-700 hover:bg-rose-100'
-                    }`}
-                  >
-                    <CreditCard className="w-3.5 h-3.5" />
-                    <span>{isPaid ? 'Paid' : 'Settle'}</span>
-                  </button>
-
-                  {onShareCustomer && (
-                    <button
-                      onClick={() => onShareCustomer(cust.userId, cust.name, cust.whatsapp)}
-                      className="p-2 rounded-xl bg-emerald-100 text-emerald-700 hover:bg-emerald-200 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
-                      title="Share via WhatsApp"
-                    >
-                      <Send className="w-3.5 h-3.5" />
-                    </button>
-                  )}
-
-                  {onDeleteCustomer && (
-                    <button
-                      onClick={() => onDeleteCustomer(cust._id, cust.name)}
-                      className="p-2 rounded-xl bg-rose-100 text-rose-700 hover:bg-rose-200 transition-colors min-h-[38px] min-w-[38px] flex items-center justify-center"
-                      title="Delete Customer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  )}
+                <div className="border-t border-slate-100 bg-slate-50/70 p-3 dark:border-slate-700 dark:bg-slate-900/30">
+                  <CustomerActions customer={customer} />
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setTransactionCustomer(cust)}
-                  className="mt-2 w-full min-h-[38px] rounded-xl border border-violet-200 dark:border-violet-900/60 bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 font-bold text-xs flex items-center justify-center gap-2"
-                >
-                  <ReceiptText className="w-4 h-4" />
-                  <span>Show Transactions ({cust.paymentTransactions?.length || 0})</span>
-                </button>
-
-              </div>
+              </article>
             );
           })}
         </div>
       ) : (
-        
-        /* Table View */
-        <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-100 dark:border-slate-700 shadow-soft overflow-hidden">
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 uppercase font-bold border-b border-slate-100 dark:border-slate-700">
+            <table className="w-full min-w-[850px] text-left text-xs">
+              <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500 dark:bg-slate-900/70">
                 <tr>
-                  <th className="p-3 sm:p-4">Customer Name</th>
-                  <th className="p-3 sm:p-4">WhatsApp</th>
-                  <th className="p-3 sm:p-4">Month</th>
-                  <th className="p-3 sm:p-4">Days</th>
-                  <th className="p-3 sm:p-4">Total Amount</th>
-                  <th className="p-3 sm:p-4">Pending Dues</th>
-                  <th className="p-3 sm:p-4">Status</th>
-                  <th className="p-3 sm:p-4 text-right">Actions</th>
+                  <th className="px-4 py-3">Customer</th><th className="px-4 py-3">Mobile</th><th className="px-4 py-3">Bill</th><th className="px-4 py-3">Received</th><th className="px-4 py-3">Pending</th><th className="px-4 py-3">Status</th><th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium">
-                {filteredCustomers.map((c, i) => {
-                  const pending = Math.max(0, (c.totalAmount || 0) - (c.paidAmount || 0));
-                  const isPaid = c.status === 'paid' || pending === 0;
-
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filteredCustomers.map(customer => {
+                  const pending = getPending(customer);
+                  const paid = pending <= 0;
                   return (
-                    <tr key={c._id || i} className="hover:bg-slate-50/80 dark:hover:bg-slate-700/30 transition-colors">
-                      <td className="p-3 sm:p-4 font-bold text-slate-800 dark:text-slate-100">{c.name}</td>
-                      <td className="p-3 sm:p-4 text-slate-500">{c.whatsapp || '-'}</td>
-                      <td className="p-3 sm:p-4 text-slate-500">{c.month || '-'}</td>
-                      <td className="p-3 sm:p-4 text-slate-800 dark:text-slate-200">{c.totalDays || 0}</td>
-                      <td className="p-3 sm:p-4 font-bold text-slate-800 dark:text-slate-100">₹{c.totalAmount || 0}</td>
-                      <td className={`p-3 sm:p-4 font-bold ${pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        ₹{pending}
-                      </td>
-                      <td className="p-3 sm:p-4">
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
-                          isPaid ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                        }`}>
-                          {isPaid ? 'Paid' : 'Unpaid'}
-                        </span>
-                      </td>
-                      <td className="p-3 sm:p-4 text-right space-x-1.5">
-                        {onEditCustomer && (
-                          <button
-                            type="button"
-                            onClick={() => openEditCustomer(c)}
-                            className="px-2.5 py-1.5 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 font-bold"
-                          >
-                            Edit
-                          </button>
-                        )}
-                        <button
-                          onClick={() => onViewCustomer && onViewCustomer(c)}
-                          className="px-2.5 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold"
-                        >
-                          View
-                        </button>
-                        <button
-                          onClick={() => onMarkPayment && onMarkPayment(c)}
-                          className={`px-2.5 py-1.5 rounded-lg font-bold ${isPaid ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'}`}
-                        >
-                          {isPaid ? 'Paid' : 'Pay'}
-                        </button>
-                        <button
-                          onClick={() => setTransactionCustomer(c)}
-                          className="px-2.5 py-1.5 rounded-lg bg-violet-50 text-violet-700 hover:bg-violet-100 font-bold"
-                        >
-                          Transactions
-                        </button>
-                        {onDeleteCustomer && (
-                          <button
-                            onClick={() => onDeleteCustomer(c._id, c.name)}
-                            className="p-1.5 rounded-lg bg-rose-100 text-rose-700 hover:bg-rose-200"
-                            title="Delete Customer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 inline" />
-                          </button>
-                        )}
-                      </td>
+                    <tr key={customer._id} className="transition hover:bg-slate-50 dark:hover:bg-slate-700/30">
+                      <td className="px-4 py-3 font-bold text-slate-800 dark:text-slate-100">{customer.name}</td>
+                      <td className="px-4 py-3 text-slate-500">{customer.whatsapp || '—'}</td>
+                      <td className="px-4 py-3 font-semibold text-slate-700 dark:text-slate-200">₹{money(customer.totalAmount)}</td>
+                      <td className="px-4 py-3 font-semibold text-emerald-700 dark:text-emerald-300">₹{money(customer.paidAmount)}</td>
+                      <td className={`px-4 py-3 font-bold ${pending > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>₹{money(pending)}</td>
+                      <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${paid ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{paid ? 'Paid' : 'Pending'}</span></td>
+                      <td className="px-4 py-3"><div className="flex justify-end"><CustomerActions customer={customer} compact /></div></td>
                     </tr>
                   );
                 })}
@@ -401,92 +365,47 @@ export default function CustomerManagementPage({
       )}
 
       {editingCustomer && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !editSaving) setEditingCustomer(null); }}>
-          <section role="dialog" aria-modal="true" aria-labelledby="edit-customer-title" className="w-full max-w-md rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden">
-            <div className="p-5 sm:p-6 border-b border-slate-100 dark:border-slate-800">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Customer details</p>
-                  <h2 id="edit-customer-title" className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">Edit Customer</h2>
-                  <p className="mt-1 text-xs text-slate-500">Update the customer's name and mobile number.</p>
-                </div>
-                <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-50" aria-label="Close edit form"><X className="w-5 h-5" /></button>
-              </div>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget && !editSaving) setEditingCustomer(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="edit-customer-title" className="w-full max-w-md overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
+              <div><p className="text-[10px] font-bold uppercase tracking-widest text-sky-600">Customer details</p><h2 id="edit-customer-title" className="mt-1 text-xl font-extrabold text-slate-900 dark:text-white">Edit customer</h2><p className="mt-1 text-xs text-slate-500">Update name and mobile number.</p></div>
+              <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800" aria-label="Close edit form"><X className="h-5 w-5" /></button>
             </div>
-            <form onSubmit={submitCustomerEdit} className="p-5 sm:p-6 space-y-4">
-              <div>
-                <label htmlFor="edit-customer-name" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Customer name</label>
-                <input id="edit-customer-name" autoFocus required maxLength={100} value={editForm.name} onChange={event => setEditForm(current => ({ ...current, name: event.target.value }))} className="w-full min-h-11 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="Enter customer name" />
-              </div>
-              <div>
-                <label htmlFor="edit-customer-mobile" className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">Mobile / WhatsApp number</label>
-                <div className="flex">
-                  <span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-3 text-sm font-semibold text-slate-500">+91</span>
-                  <input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\s()-]/g, '') }))} className="min-w-0 flex-1 min-h-11 rounded-r-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-900 dark:text-white outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" placeholder="10-digit mobile number" />
-                </div>
-                <p className="mt-1 text-[11px] text-slate-400">Use a valid 10-digit Indian mobile number.</p>
-              </div>
+            <form onSubmit={submitCustomerEdit} className="space-y-4 p-5">
+              <div><label htmlFor="edit-customer-name" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Customer name</label><input id="edit-customer-name" autoFocus required maxLength={100} value={editForm.name} onChange={event => setEditForm(current => ({ ...current, name: event.target.value }))} className="min-h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="Enter customer name" /></div>
+              <div><label htmlFor="edit-customer-mobile" className="mb-1.5 block text-xs font-bold text-slate-700 dark:text-slate-300">Mobile / WhatsApp number</label><div className="flex"><span className="inline-flex items-center rounded-l-xl border border-r-0 border-slate-200 bg-slate-100 px-3 text-sm font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-800">+91</span><input id="edit-customer-mobile" type="tel" inputMode="numeric" autoComplete="tel-national" required maxLength={15} value={editForm.whatsapp} onChange={event => setEditForm(current => ({ ...current, whatsapp: event.target.value.replace(/[^0-9+\s()-]/g, '') }))} className="min-h-11 min-w-0 flex-1 rounded-r-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-sky-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white" placeholder="10-digit mobile number" /></div><p className="mt-1 text-[11px] text-slate-400">Enter a valid 10-digit Indian mobile number.</p></div>
               {editError && <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs font-medium text-rose-700">{editError}</div>}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
-                <button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="min-h-11 rounded-xl border border-slate-200 dark:border-slate-700 px-4 text-sm font-bold text-slate-600 dark:text-slate-300 disabled:opacity-50">Cancel</button>
-                <button type="submit" disabled={editSaving} className="min-h-11 rounded-xl bg-sky-600 hover:bg-sky-700 px-5 text-sm font-bold text-white shadow-md disabled:opacity-60">{editSaving ? 'Saving…' : 'Save Changes'}</button>
-              </div>
+              <div className="flex flex-col-reverse gap-2 pt-1 sm:flex-row sm:justify-end"><button type="button" disabled={editSaving} onClick={() => setEditingCustomer(null)} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600 dark:border-slate-700 dark:text-slate-300">Cancel</button><button type="submit" disabled={editSaving} className="min-h-11 rounded-xl bg-sky-600 px-5 text-sm font-bold text-white shadow-md hover:bg-sky-700 disabled:opacity-60">{editSaving ? 'Saving…' : 'Save changes'}</button></div>
             </form>
           </section>
         </div>
       )}
 
       {transactionCustomer && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm">
-          <div className="w-full max-w-lg max-h-[88vh] overflow-hidden rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 shadow-2xl flex flex-col">
-            <div className="p-5 border-b border-slate-100 dark:border-slate-800 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-lg font-extrabold text-slate-800 dark:text-slate-100">Payment Transactions</h2>
-                <p className="text-xs text-slate-500 mt-1">{transactionCustomer.name} · Date-wise payment history</p>
-              </div>
-              <button type="button" onClick={() => setTransactionCustomer(null)} className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500" aria-label="Close transactions">
-                <X className="w-5 h-5" />
-              </button>
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/70 p-3 backdrop-blur-sm" onMouseDown={event => { if (event.target === event.currentTarget) setTransactionCustomer(null); }}>
+          <section role="dialog" aria-modal="true" aria-labelledby="customer-ledger-title" className="flex max-h-[88vh] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-slate-700 dark:bg-slate-900">
+            <div className="flex items-start justify-between gap-3 border-b border-slate-100 p-5 dark:border-slate-800">
+              <div><h2 id="customer-ledger-title" className="text-lg font-extrabold text-slate-900 dark:text-white">Payment ledger</h2><p className="mt-1 text-xs text-slate-500">{transactionCustomer.name} · Payment history</p></div>
+              <button type="button" onClick={() => setTransactionCustomer(null)} className="rounded-xl bg-slate-100 p-2 text-slate-500 dark:bg-slate-800" aria-label="Close ledger"><X className="h-5 w-5" /></button>
             </div>
-            <div className="p-4 overflow-y-auto space-y-3">
+            <div className="space-y-3 overflow-y-auto p-4">
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-3">
-                  <p className="text-[10px] uppercase font-bold text-emerald-700 dark:text-emerald-300">Total Received</p>
-                  <p className="text-xl font-extrabold text-emerald-700 dark:text-emerald-300">₹{(transactionCustomer.paymentTransactions || []).reduce((sum, tx) => sum + Number(tx.amount || 0), 0).toFixed(2)}</p>
-                </div>
-                <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/30 p-3">
-                  <p className="text-[10px] uppercase font-bold text-rose-700 dark:text-rose-300">Transactions</p>
-                  <p className="text-xl font-extrabold text-rose-700 dark:text-rose-300">{transactionCustomer.paymentTransactions?.length || 0}</p>
-                </div>
+                <div className="rounded-2xl bg-emerald-50 p-3 dark:bg-emerald-950/30"><p className="text-[10px] font-bold uppercase text-emerald-700 dark:text-emerald-300">Total received</p><p className="mt-1 text-xl font-extrabold text-emerald-700 dark:text-emerald-300">₹{money((transactionCustomer.paymentTransactions || []).reduce((sum, tx) => sum + Number(tx.amount || 0), 0))}</p></div>
+                <div className="rounded-2xl bg-rose-50 p-3 dark:bg-rose-950/30"><p className="text-[10px] font-bold uppercase text-rose-700 dark:text-rose-300">Transactions</p><p className="mt-1 text-xl font-extrabold text-rose-700 dark:text-rose-300">{transactionCustomer.paymentTransactions?.length || 0}</p></div>
               </div>
               {(transactionCustomer.paymentTransactions || []).length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-500">
-                  No transaction history found yet.
-                  <p className="text-xs mt-1">New payments will appear here with date and optional remark.</p>
-                  <p className="text-[11px] mt-3 text-amber-600 dark:text-amber-400">Payments recorded before this transaction-history feature cannot be shown as separate dated entries.</p>
+                <div className="py-10 text-center text-sm text-slate-500">No dated payment transactions found.<p className="mt-1 text-xs">Payments recorded before transaction history was enabled cannot be reconstructed individually.</p></div>
+              ) : [...transactionCustomer.paymentTransactions].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate)).map((tx, index) => (
+                <div key={tx._id || index} className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 p-3 dark:border-slate-700">
+                  <div className="min-w-0"><p className="font-bold text-slate-800 dark:text-slate-100">{formatDate(tx.paymentDate)}</p><p className="mt-1 break-words text-xs text-slate-500">{tx.remark || 'No remark'}</p></div>
+                  <p className="shrink-0 font-extrabold text-emerald-600 dark:text-emerald-400">₹{money(tx.amount)}</p>
                 </div>
-              ) : (
-                [...transactionCustomer.paymentTransactions]
-                  .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate))
-                  .map((tx, index) => (
-                    <div key={tx._id || index} className="rounded-2xl border border-slate-200 dark:border-slate-700 p-3 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-bold text-slate-800 dark:text-slate-100">{formatDate(tx.paymentDate)}</p>
-                        <p className="text-xs text-slate-500 mt-1 break-words">{tx.remark || 'No remark'}</p>
-                      </div>
-                      <p className="shrink-0 font-extrabold text-emerald-600 dark:text-emerald-400">₹{Number(tx.amount || 0).toFixed(2)}</p>
-                    </div>
-                  ))
-              )}
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 pt-2">Only payments recorded after this feature is enabled appear as individual dated transactions. Earlier payment totals remain in the account, but their separate dates and remarks cannot be reconstructed.</p>
+              ))}
             </div>
-            <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-              <button type="button" onClick={() => setTransactionCustomer(null)} className="w-full btn-secondary text-xs py-3">Close</button>
-            </div>
-          </div>
+            <div className="border-t border-slate-100 p-4 dark:border-slate-800"><button type="button" onClick={() => setTransactionCustomer(null)} className="min-h-11 w-full rounded-xl bg-slate-100 text-xs font-bold text-slate-700 dark:bg-slate-800 dark:text-slate-200">Close ledger</button></div>
+          </section>
         </div>
       )}
-
-    </div>
+    </main>
   );
 }
