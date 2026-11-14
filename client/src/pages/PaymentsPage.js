@@ -76,7 +76,7 @@ export default function PaymentsPage({
           <div className="text-sm sm:text-base font-extrabold text-slate-800 dark:text-slate-100 font-mono truncate">
             {upiId || 'Not Configured'}
           </div>
-          <span className="text-[11px] text-sky-600 font-semibold mt-1 block">Default UPI ID for QR scans</span>
+          <span className="text-[11px] text-emerald-600 font-semibold mt-1 block">Default UPI ID for QR scans</span>
         </div>
 
       </div>
@@ -125,7 +125,7 @@ export default function PaymentsPage({
                 <div className="flex items-center gap-2 pt-1">
                   <button
                     onClick={() => onMarkPayment && onMarkPayment(c)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-sky-50 dark:bg-sky-950 text-sky-700 dark:text-sky-300 font-bold text-xs flex items-center justify-center gap-1 min-h-[38px]"
+                    className="flex-1 py-2 px-3 rounded-xl bg-emerald-50 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center gap-1 min-h-[38px]"
                   >
                     Settle Payment
                   </button>
@@ -187,7 +187,7 @@ export default function PaymentsPage({
                     <td className="p-4 text-right space-x-2">
                       <button
                         onClick={() => onMarkPayment && onMarkPayment(c)}
-                        className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 font-bold"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold"
                       >
                         Settle Payment
                       </button>
