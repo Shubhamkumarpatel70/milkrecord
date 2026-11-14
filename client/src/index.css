@@ -5,11 +5,11 @@
 
 /* CSS Variables for theming */
 :root {
-  --gradient-primary: linear-gradient(135deg, #0ea5e9 0%, #10b981 100%);
+  --gradient-primary: linear-gradient(135deg, #059669 0%, #0f766e 100%);
   --gradient-secondary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   --gradient-accent: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
   --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
-  --gradient-background: linear-gradient(135deg, #f0f9ff 0%, #ecfdf5 100%);
+  --gradient-background: linear-gradient(135deg, #f7fcf8 0%, #effaf3 100%);
   --shadow-soft: 0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04);
   --shadow-medium: 0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --shadow-strong: 0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 4px 25px -5px rgba(0, 0, 0, 0.1);
@@ -253,3 +253,37 @@ code {
 .success-check-icon { stroke-dasharray: 42; stroke-dashoffset: 42; animation: success-draw 520ms 180ms ease-out forwards; }
 @keyframes success-pop { 0% { transform: scale(.55); opacity: .25; } 75% { transform: scale(1.08); opacity: 1; } 100% { transform: scale(1); opacity: 1; } }
 @keyframes success-draw { to { stroke-dashoffset: 0; } }
+
+
+/* Milk Record visual system: fresh dairy greens, warm milk surfaces and calm controls */
+:root {
+  --dairy-green: #07845b;
+  --dairy-deep: #075b43;
+  --dairy-mint: #e9f7ef;
+  --dairy-cream: #fbfefb;
+}
+body { background: #f6fbf7; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 2px solid #10a36d; outline-offset: 2px;
+}
+@layer components {
+  .btn-primary {
+    @apply bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-sm hover:shadow-md transition-colors duration-200 transform-none active:scale-[0.99] focus:ring-2 focus:ring-emerald-500;
+  }
+  .btn-secondary {
+    @apply bg-emerald-50 hover:bg-emerald-100 text-emerald-900 font-bold rounded-xl shadow-none transition-colors duration-200 transform-none active:scale-[0.99];
+  }
+  .input-field {
+    @apply rounded-xl border-slate-200 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500;
+  }
+  .card, .card-elevated {
+    @apply rounded-2xl border-slate-200 shadow-sm;
+  }
+}
+@media (max-width: 1023px) {
+  main { min-width: 0; }
+}
+@media (max-width: 640px) {
+  button { touch-action: manipulation; }
+}
