@@ -268,20 +268,44 @@ export function MainAppContent() {
     e.preventDefault();
     if (!editingRecordId) return;
     try {
-      await axios.put(`/api/milk-records/${editingRecordId}`, {
+      const response = await axios.put(`/api/milk-records/${editingRecordId}`, {
         customer: editRecordForm.customer,
         quantityKg: editRecordForm.quantityKg,
+        ratePerUnit: Number(editRecordForm.ratePerUnit || 0),
         amount: Number(editRecordForm.quantityKg) * Number(editRecordForm.ratePerUnit || 0),
         quantityUnit: editRecordForm.quantityUnit || 'kg',
         shift: editRecordForm.shift,
         createdAt: editRecordForm.date
       });
+      const updatedRecord = response.data?.record;
+      if (!updatedRecord) throw new Error('The server did not return the updated milk entry.');
       setShowEditRecordModal(false);
       setEditingRecordId(null);
+      const updatedMonth = String(editRecordForm.date || indiaDateKey()).slice(0, 7);
+      if (updatedMonth !== selectedMonth) setSelectedMonth(updatedMonth);
+      const details = await axios.get(`/api/milk-records/details?month=${updatedMonth}`);
+      setRecords(Array.isArray(details.data?.records) ? details.data.records : []);
       await refreshData();
       alert('Milk record updated successfully.');
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to update milk record.');
+    }
+  };
+
+  const handleDeleteRecord = async (record) => {
+    if (!record?._id) {
+      alert('This milk entry could not be identified. Please refresh and try again.');
+      return;
+    }
+    const confirmed = window.confirm(`Delete this milk entry for ${record.customerName || record.customer || 'this customer'} dated ${String(record.createdAt || '').slice(0, 10)}? This action cannot be undone.`);
+    if (!confirmed) return;
+    try {
+      await axios.delete(`/api/milk-records/${record._id}`);
+      setRecords(previous => previous.filter(item => String(item._id) !== String(record._id)));
+      await refreshData();
+      alert('Milk entry deleted successfully.');
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete milk entry.');
     }
   };
 
@@ -491,6 +515,7 @@ export function MainAppContent() {
               selectedMonth={selectedMonth}
               onMonthChange={setSelectedMonth}
               onOpenAddRecord={() => setShowAddRecordModal(true)}
+              onDeleteRecord={handleDeleteRecord}
               onOpenEditRecord={(record) => {
                 setEditingRecordId(record._id);
                 setEditRecordForm({
