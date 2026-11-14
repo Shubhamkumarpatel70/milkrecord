@@ -28,7 +28,7 @@ export default function Navbar({
           <button type="button" onClick={() => onNavigate('dashboard')} aria-label="Milk Record home"
             className="flex min-w-0 items-center gap-2.5 rounded-xl text-left focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-500 text-white shadow-md shadow-emerald-700/20">
-              <Logo className="h-6 w-6 text-white" />
+              <Logo size="small" showText={false} className="h-6 w-6 text-white" />
             </span>
             <span className="min-w-0">
               <span className="block truncate text-sm font-extrabold tracking-tight text-slate-900 dark:text-white sm:text-base">Milk Record</span>
