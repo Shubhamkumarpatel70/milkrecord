@@ -408,7 +408,7 @@ export function MainAppContent() {
         />
 
         {/* Main Content Workspace */}
-        <main className="flex-1 lg:ml-64 p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 lg:ml-[272px] p-3 sm:p-6 lg:p-8 w-full max-w-full overflow-x-hidden min-h-[calc(100vh-4rem)]">
           {currentView === 'dashboard' && (
             <DashboardPage
               todaysMilkKg={todaysMilkKg}
