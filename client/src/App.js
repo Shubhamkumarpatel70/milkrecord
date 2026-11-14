@@ -158,8 +158,12 @@ export function MainAppContent() {
     try {
       const profileResponse = await axios.get('/api/auth/business-profile/me');
       const profile = profileResponse.data?.businessProfile || {};
-      setBusinessProfile({ shopName: profile.shopName || '', milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: Boolean(profile.isConfigured) });
-      if (!profile.isConfigured) setShowOnboarding(true);
+      const savedShopName = typeof profile.shopName === 'string' ? profile.shopName.trim() : '';
+      const hasSavedShopName = savedShopName.length >= 2;
+      setBusinessProfile({ shopName: savedShopName, milkRate: Number(profile.milkRate ?? 50), quantityUnit: profile.quantityUnit || 'kg', isConfigured: hasSavedShopName || Boolean(profile.isConfigured) });
+      // A saved shop name is the source of truth for onboarding completion.
+      // Older accounts may have a name but a stale/missing isConfigured flag.
+      setShowOnboarding(!hasSavedShopName);
       if (profileResponse.data?.paymentOptions) setUpiId(profileResponse.data.paymentOptions.upiId || '');
 
       // Fetch Customer Summaries
