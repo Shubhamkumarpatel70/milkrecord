@@ -54,4 +54,47 @@ exports.getCustomerById = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: 'Server error.' });
   }
-}; 
+};
+
+exports.updateCustomer = async (req, res) => {
+  try {
+    const { name, whatsapp, userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: 'userId is required.' });
+    }
+
+    const cleanName = typeof name === 'string' ? name.trim() : '';
+    const cleanWhatsapp = typeof whatsapp === 'string' ? whatsapp.trim() : '';
+
+    if (!cleanName) {
+      return res.status(400).json({ message: 'Customer name is required.' });
+    }
+
+    const digits = cleanWhatsapp.replace(/\\D/g, '');
+    if (!/^\\+?[0-9\\s()-]+$/.test(cleanWhatsapp) || digits.length < 10 || digits.length > 15) {
+      return res.status(400).json({ message: 'Enter a valid mobile number (10–15 digits).' });
+    }
+
+    const customer = await Customer.findOneAndUpdate(
+      { _id: req.params.id, user: userId },
+      { $set: { name: cleanName, whatsapp: cleanWhatsapp } },
+      { new: true, runValidators: true }
+    );
+
+    if (!customer) {
+      return res.status(404).json({ message: 'Customer not found for this user.' });
+    }
+
+    return res.json({ message: 'Customer updated successfully.', customer });
+  } catch (err) {
+    console.error(err);
+    if (err.code === 11000) {
+      return res.status(409).json({ message: 'A customer with this mobile number already exists.' });
+    }
+    if (err.name === 'CastError') {
+      return res.status(400).json({ message: 'Invalid customer ID.' });
+    }
+    return res.status(500).json({ message: 'Server error.' });
+  }
+};
