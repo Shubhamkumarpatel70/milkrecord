@@ -30,9 +30,9 @@ const monthLabel = (key) => {
 
 function SummaryCard({ label, value, note, icon: Icon, tone }) {
   const tones = {
-    blue: 'bg-sky-50 text-sky-700 dark:bg-sky-950/50 dark:text-sky-300',
+    blue: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-95050 dark:text-emerald-300',
     green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300',
-    purple: 'bg-violet-50 text-violet-700 dark:bg-violet-950/50 dark:text-violet-300',
+    purple: 'bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300',
     red: 'bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300'
   };
   return (
@@ -160,7 +160,7 @@ export default function DashboardPage({
     <div className="mx-auto w-full max-w-7xl space-y-5 pb-8 sm:space-y-6">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-sky-700 dark:text-sky-300">Dashboard</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">Dashboard</p>
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 dark:text-white sm:text-3xl">
             Welcome back!
           </h1>
@@ -169,7 +169,7 @@ export default function DashboardPage({
         <button
           type="button"
           onClick={onOpenAddRecord}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-500 focus:ring-offset-2"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
         >
           <Plus className="h-4 w-4" /> Add milk entry
         </button>
@@ -195,9 +195,9 @@ export default function DashboardPage({
               key={label}
               type="button"
               onClick={action}
-              className="flex min-h-[94px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-center transition hover:border-sky-300 hover:bg-sky-50 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-sky-800 dark:hover:bg-slate-700"
+              className="flex min-h-[94px] min-w-0 flex-col items-center justify-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-center transition hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 dark:border-slate-700 dark:bg-slate-900/60 dark:hover:border-emerald-800 dark:hover:bg-slate-700"
             >
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-sky-700 shadow-sm dark:bg-slate-800 dark:text-sky-300">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-white text-emerald-700 shadow-sm dark:bg-slate-800 dark:text-emerald-300">
                 <Icon className="h-4 w-4" />
               </span>
               <span className="text-xs font-semibold text-slate-800 dark:text-slate-100 sm:text-sm">{label}</span>
@@ -279,7 +279,7 @@ export default function DashboardPage({
           <button
             type="button"
             onClick={() => onNavigate && onNavigate('payments')}
-            className="mt-5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-sky-400 hover:text-sky-700 dark:border-slate-600 dark:text-slate-200 dark:hover:text-sky-300"
+            className="mt-5 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-emerald-400 hover:text-emerald-700 dark:border-slate-600 dark:text-slate-200 dark:hover:text-emerald-300"
           >
             View payments <ArrowUpRight className="h-4 w-4" />
           </button>
@@ -329,7 +329,7 @@ export default function DashboardPage({
           <button
             type="button"
             onClick={() => onNavigate && onNavigate('records')}
-            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-sky-700 hover:text-sky-800 dark:text-sky-300"
+            className="inline-flex shrink-0 items-center gap-1 text-xs font-semibold text-emerald-700 hover:text-emerald-800 dark:text-emerald-300"
           >
             View all <ArrowUpRight className="h-3.5 w-3.5" />
           </button>
