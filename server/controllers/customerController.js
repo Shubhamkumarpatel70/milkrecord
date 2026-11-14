@@ -225,6 +225,71 @@ exports.deleteCustomer = async (req, res) => {
 };
 
 
+exports.deletePaymentTransaction = async (req, res) => {
+  try {
+    const userId = req.authUser._id;
+    const customer = await Customer.findOne({ _id: req.params.customerId, user: userId });
+    if (!customer) return res.status(404).json({ message: 'Customer not found.' });
+
+    const transaction = customer.paymentTransactions.id(req.params.transactionId);
+    if (!transaction) return res.status(404).json({ message: 'Payment transaction not found.' });
+
+    // Older ledger entries do not have a billing month. Fall back to the payment date,
+    // but only reverse if that month's recorded paid balance can cover the full amount.
+    const billingMonth = transaction.billingMonth ||
+      moment(transaction.paymentDate).utcOffset(330).format('YYYY-MM');
+    if (!/^[0-9]{4}-(0[1-9]|1[0-2])$/.test(String(billingMonth || ''))) {
+      return res.status(409).json({ message: 'This payment has no valid billing period and cannot be safely reversed.' });
+    }
+
+    const start = moment(billingMonth + '-01');
+    const end = start.clone().add(1, 'month');
+    const sameNameCustomers = await Customer.find({ user: userId, name: customer.name }).select('_id');
+    const recordMatch = sameNameCustomers.length === 1
+      ? { $or: [{ customerId: customer._id }, { customerId: { $exists: false }, customer: customer.name }] }
+      : { customerId: customer._id };
+    const records = await MilkRecord.find({
+      user: userId,
+      ...recordMatch,
+      createdAt: { $gte: start.toDate(), $lt: end.toDate() }
+    }).sort({ createdAt: -1, _id: -1 });
+
+    const amountToReverse = Math.round(Number(transaction.amount || 0) * 100) / 100;
+    const availablePaid = Math.round(records.reduce((sum, record) => sum + Number(record.paidAmount || 0), 0) * 100) / 100;
+    if (!records.length || availablePaid + 0.001 < amountToReverse) {
+      return res.status(409).json({
+        message: 'This payment cannot be safely reversed because the matching milk records do not contain enough paid balance. No changes were made.'
+      });
+    }
+
+    let remaining = amountToReverse;
+    for (const record of records) {
+      if (remaining <= 0) break;
+      const paid = Math.max(0, Number(record.paidAmount || 0));
+      if (!paid) continue;
+      const reversed = Math.min(paid, remaining);
+      record.paidAmount = Math.round((paid - reversed) * 100) / 100;
+      record.status = record.paidAmount >= Number(record.amount || 0) ? 'paid' : 'unpaid';
+      await record.save();
+      remaining = Math.round((remaining - reversed) * 100) / 100;
+    }
+
+    customer.paymentTransactions.pull({ _id: transaction._id });
+    await customer.save();
+    return res.json({
+      success: true,
+      message: 'Payment transaction deleted and the received amount was reversed.',
+      deletedTransactionId: String(transaction._id),
+      reversedAmount: amountToReverse,
+      billingMonth
+    });
+  } catch (err) {
+    if (err.name === 'CastError') return res.status(400).json({ message: 'Invalid customer or transaction ID.' });
+    console.error('Delete payment transaction error:', err);
+    return res.status(500).json({ message: 'Unable to delete payment transaction. Please try again.' });
+  }
+};
+
 exports.updateCustomer = async (req, res) => {
   try {
     const name = String(req.body.name || '').trim();
